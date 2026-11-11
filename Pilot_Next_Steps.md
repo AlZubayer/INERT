@@ -1,6 +1,8 @@
 # INERT pilot: next steps
 
-Written 2026-11-11. Nothing below has been done yet.
+Written 2026-11-11. Implementation status updated 2026-11-12. Steps 0 and 1 are
+complete. The isolated smoke run stopped at the parse-failure gate; P0, full
+dataset generation, and pilot scoring have not run.
 
 The pilot decides whether the full INERT project is built. It should take about one week of one person's time plus GPU time. The specification is `Pilot_Experimental_Design.md`; section numbers below refer to it.
 
@@ -8,36 +10,59 @@ The pilot decides whether the full INERT project is built. It should take about 
 
 - **Done:** literature review; revised research questions; channel audit of 11 published world-model pipelines (outcome: conditional pass; the channel exists, most clearly for agent reasoning in web and tool pipelines, with one code/terminal case).
 - **Constraint:** no API budget. Everything runs on one local 16 GB GPU.
-- **Not done:** any code, any model run, any result.
+- **Implemented:** Step 0 verification and the Step 1 pipeline. See
+  `results/pilot/Step0_Verification.md` and `results/pilot/Step1_Validation.md`.
+- **In progress:** the three-task smoke pipeline prepared tasks, candidates,
+  ground truth, thoughts, and items. WM-C smoke scoring was stopped after the
+  Channel-D prompt repair failed the parse gate (see Step 2 below).
+- **Not done:** a complete smoke run, P0, full pilot data generation, or
+  experimental results.
 
 ## Step 0: confirm the unknowns (half a day, no GPU)
 
 These were not verified when the design was written. Resolve each one and record the answer in `configs/models.yaml` or `results/pilot/env.json`.
 
-- [ ] `Qwen/Qwen-AgentWorld-35B-A3B` exists, its licence allows this use, and a GGUF build is available or can be converted.
-- [ ] The installed llama.cpp supports that model's architecture.
-- [ ] `Qwen/Qwen2.5-7B-Instruct`, `Qwen/Qwen2.5-1.5B-Instruct` and `Qwen/Qwen2.5-Coder-7B-Instruct` exist with GGUF builds; licences recorded.
-- [ ] The MBPP sanitized dataset identifier is correct and loads.
-- [ ] Licences of `QwenLM/Qwen-AgentWorld` and `microsoft/Simia-Agent-Training` allow copying their prompt text.
-- [ ] The vendored prompt locations in section 7.3 match the pinned commits.
-- [ ] Docker runs on the machine with `--network none`.
+- [x] `Qwen/Qwen-AgentWorld-35B-A3B` exists, its licence allows this use, and a GGUF build is available or can be converted.
+- [x] The installed llama.cpp supports that model's architecture.
+- [x] `Qwen/Qwen2.5-7B-Instruct`, `Qwen/Qwen2.5-1.5B-Instruct` and `Qwen/Qwen2.5-Coder-7B-Instruct` exist with GGUF builds; licences recorded.
+- [x] The MBPP sanitized dataset identifier is correct and loads.
+- [x] Licences of `QwenLM/Qwen-AgentWorld` and `microsoft/Simia-Agent-Training` allow copying their prompt text.
+- [x] The vendored prompt locations in section 7.3 match the pinned commits.
+- [x] Docker runs on the machine with `--network none`.
+
+Model file hashes are pinned from upstream LFS metadata and checked locally
+before serving. WM-C and proposer weights were downloaded and hash-verified for
+the smoke run. The WM-A Q4 download is incomplete; WM-B and WM-A Q3 weights are
+not downloaded. The WM-A loading and latency gate remains Step 3/P0.
 
 If any of these fails, stop and decide before going on. The one that matters most is the first.
 
 ## Step 1: build the pipeline (2 to 3 days, no GPU needed for most of it)
 
-- [ ] Repository skeleton, `pyproject.toml`, configs (section 12.1).
-- [ ] Schemas, config loader, paths.
-- [ ] Sandbox and harness, with tests (sections 6.4, 6.6).
-- [ ] Stripping, natural-text extraction, mutators, inertness checks, with tests (sections 6.5, 6.7).
-- [ ] Text conditions and both channel renderers, with tests (sections 7, 8).
-- [ ] Server lifecycle and cached client (sections 5.1, 12.3).
-- [ ] Parser, with tests (section 9.5).
-- [ ] Selection resampling, bootstrap, endpoints and decision rules, with tests on synthetic data (section 11).
-- [ ] Report writer (section 14).
-- [ ] All unit tests in section 12.4 pass.
+- [x] Repository skeleton, `pyproject.toml`, configs (section 12.1).
+- [x] Schemas, config loader, paths.
+- [x] Sandbox and harness, with tests (sections 6.4, 6.6).
+- [x] Stripping, natural-text extraction, mutators, inertness checks, with tests (sections 6.5, 6.7).
+- [x] Text conditions and both channel renderers, with tests (sections 7, 8).
+- [x] Server lifecycle and cached client (sections 5.1, 12.3).
+- [x] Parser, with tests (section 9.5).
+- [x] Selection resampling, bootstrap, endpoints and decision rules, with tests on synthetic data (section 11).
+- [x] Report writer (section 14).
+- [x] All unit tests in section 12.4 pass.
+
+Approved pre-scoring clarifications, including task tokenization, test imports,
+and task-weighted enrichment, are recorded in `results/pilot/deviations.md`.
+The full experimental design and its pre-registered values remain unchanged.
 
 ## Step 2: smoke run (2 hours)
+
+Status on 2026-11-12: preparation and inertness checks completed for three
+tasks. The first WM-C smoke scoring attempt had 9 parse failures in 20
+persisted records, all in Channel D. A single owner-approved Section 9.5
+prompt-adaptation repair was applied. In the interrupted rerun, Channel C had
+2 failures in 18 records (11.1%) and Channel D had 4 in 12 (33.3%). Scoring
+stopped as required; no further prompt adjustment or later stage has run.
+See `results/pilot/deviations.md` for exact changes and cache handling.
 
 - [ ] 3 tasks, WM-C only, every stage end to end.
 - [ ] Open 10 rendered items by hand and read them. Check the text sits where it should and the `T0` items have no leftover artefacts.
