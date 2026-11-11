@@ -86,3 +86,42 @@ denominator rule. The two Channel-C failures were a 1,024-token repetitive
 output without `RESULT` and an output reporting missing files. The repair
 improved Channel-D tool-output shape but did not meet the parse threshold.
 No second prompt adjustment was made, and the smoke run remains incomplete.
+
+## 2026-11-12: follow-up vendored simulator input-format repair
+
+Approved by the project owner after the interrupted WM-C smoke rerun. The
+previous run (30 persisted scores) remains a failed, incomplete smoke run;
+none of its scores are experimental results.
+
+- Channel C: the vendored terminal prompt expects a JSON array of actions
+  with `keystrokes` and `duration`. The primary message previously sent raw
+  shell text with no final Enter. The vendored-only renderer now packages
+  the same unmodified shell commands as one JSON action, adds the trailing
+  newline needed to execute `python run_tests.py`, and takes the simulation
+  duration from the existing `sandbox.wall_seconds` configuration.
+  The in-house fallback remains unchanged.
+- Channel D: separate the existing appended output instruction from the
+  vendored template with two newline characters. Add explicit instruction
+  that the denominator `n` is `len(TESTS)` and includes both passing and
+  failing entries. This is a prompt-adaptation clarification only; no
+  execution result is supplied.
+- Add regression tests for the vendored Channel C JSON action and the
+  Channel D separator and denominator guidance.
+
+No task, candidate code, test harness, agent thought, text-condition template,
+model, seed, scoring threshold, frozen parser, or statistical decision rule
+was changed. The vendored source prompt files and their provenance remain
+unchanged. These are follow-up repairs to the assembled prompt format, not
+evidence that the model will now parse reliably.
+
+The previous smoke items and WM-C cached requests must **not** be reused to
+represent these new prompt versions. Before any rerun, archive the active
+smoke score file and WM-C SQLite cache (including WAL/SHM files) under a new
+timestamped `data/smoke/audit/` folder, record the exact paths, and rebuild
+all smoke items. No deletion or cache reset was performed by this GitHub
+change. Inspect the first outputs and stop at the existing parse-failure gate
+without further unapproved prompt changes.
+
+A live smoke rerun and the full local pytest/Ruff suite have not been performed
+as part of this remote code change; Codex must run them on the local machine.
+
