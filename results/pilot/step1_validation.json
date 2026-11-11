@@ -1,0 +1,53 @@
+{
+  "status": "PASS",
+  "pytest": {
+    "command": [
+      ".venv/Scripts/python.exe",
+      "-m",
+      "pytest",
+      "-q",
+      "--junitxml=data/verification/pytest.xml"
+    ],
+    "source": "data/verification/pytest.xml",
+    "tests": 156,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "import_reference_checks": {
+    "total": 13,
+    "passed": 13
+  },
+  "ruff_check": {
+    "command": [
+      ".venv/Scripts/ruff.exe",
+      "check",
+      "src",
+      "tests"
+    ],
+    "exit_code": 0,
+    "stdout": "All checks passed!\n",
+    "stderr": ""
+  },
+  "ruff_format": {
+    "command": [
+      ".venv/Scripts/ruff.exe",
+      "format",
+      "--check",
+      "src",
+      "tests"
+    ],
+    "exit_code": 0,
+    "stdout": "40 files already formatted\n",
+    "stderr": ""
+  },
+  "model_inference": "NOT_RUN",
+  "smoke_run": "NOT_RUN",
+  "p0": "NOT_RUN",
+  "sources": {
+    "data\\verification\\pytest.xml": "65e48b46326567026df20134295af4eced5082dfc56d42216ab2bc123f60e876",
+    "data\\verification\\quality_checks.json": "32d709fd2afe64d813cbdb0e342b8b5de65295ab5c0327b01ff8678cac3f8298",
+    "data\\verification\\import_reference_checks.json": "498aa15ff5d3fda3728608f16aa77975f1626954332c41f77ffc12b8635a1e2f",
+    "results\\pilot\\env.json": "70ff67d9435851f050b0d7cdc7e2e61668515b6f22598b7525fa2096949cd201"
+  }
+}
