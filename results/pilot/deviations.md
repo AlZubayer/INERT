@@ -125,3 +125,83 @@ without further unapproved prompt changes.
 A live smoke rerun and the full local pytest/Ruff suite have not been performed
 as part of this remote code change; Codex must run them on the local machine.
 
+## 2026-11-12: archive active smoke artifacts for corrected prompt rerun
+
+After fast-forwarding to `3b2239a03b9623c96c4b2ad6774a9798bb899265`, the
+local validation passed (184 pytest tests, Ruff lint, and Ruff format). The
+previous active three-task smoke files contained 310 items, 30 persisted
+WM-C scores, and 37 cached WM-C responses. With no INERT server lock or
+`llama-server.exe` process present, the following files were moved to
+`data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/`:
+
+- `data/smoke/items.jsonl` → `data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/items.jsonl`
+- `data/smoke/scores/wm_c.jsonl` → `data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/wm_c.jsonl`
+- `data/smoke/cache/wm_c.sqlite` → `data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/wm_c.sqlite`
+- `data/smoke/cache/wm_c.sqlite-wal` → `data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/wm_c.sqlite-wal`
+- `data/smoke/cache/wm_c.sqlite-shm` → `data/smoke/audit/prompt_format_before_rerun_20261111T204010Z/wm_c.sqlite-shm`
+
+Historical archives were preserved. No pilot (non-smoke) cache or score file
+was moved. The prior items and cached responses cannot be reused with the
+corrected renderer. This records the cache-clearing action required by section
+12.3. Scoring had already started in smoke only; P0 and pilot scoring had not.
+
+## 2026-11-12: corrected renderer smoke rerun stopped at parse gate
+
+The approved renderer changes were used to rebuild 310 isolated smoke items.
+WM-C `kt_ab` scoring stopped at the existing parse-failure gate: the first
+persisted batch had 5 failures among 10 scores (50%). At interruption, the
+SQLite cache held 19 completed local calls: Channel C 6 failures in 10 calls,
+Channel D 2 in 9, overall 8 in 19 (42.1%). The score file held the first 10;
+the remaining nine completed calls are recoverable only from the cache. Full
+failure evidence, including raw outputs and finish reasons, is in
+`data/smoke/audit/prompt_format_rerun_20261112_failures.json`, and the
+verification report is `results/pilot/Smoke_Renderer_Validation_20261112.md`.
+
+Five Channel-C failures reached 1,024 tokens without a valid `RESULT` line,
+including repeated commands and one missing-file hallucination. Another
+Channel-C output ended with a wrong-denominator `RESULT: 1/1` after a valid
+`RESULT: 3/3`; the frozen last-match parser rejected it. Two Channel-D outputs
+returned `RESULT: 0/10` for a three-test task. No prompt, threshold, template,
+seed, parser, or decision rule was changed in response. Scoring had begun in
+the isolated smoke profile only; P0 and pilot scoring had not begun.
+
+## 2026-11-12: controlled in-house prompt diagnostic
+
+The project owner authorized a separate WM-C diagnostic to compare the
+existing in-house Channel-C and Channel-D prompt templates with available
+vendored smoke outputs. This is **not official pilot scoring** and does not
+change the preregistered primary vendored prompt family. Both prompt template
+files, all text conditions, parser rules, model settings, candidates, tests,
+thoughts, and ground truth remain unchanged.
+
+Diagnostic artifacts are isolated under `data/smoke/diagnostics/inhouse/`.
+The fixed selection is recorded in `selection.json`: four existing core-set
+candidates (two passing and two failing) across all three smoke tasks, with
+`T0`, `NEU_A`, `NEU_B`, `MIS_OUTCOME`, and `MIS_VERIFY` in both channels. The
+generated `items.jsonl` has 20 items per channel; `manifest.json` records
+source hashes, sampling parameters, and context length. The small
+`src/inert/diagnostic_inhouse.py` runner uses a separate WM-C cache and score
+file, writing validated records after each call. Prior smoke scores, caches,
+items, and audit files are not altered.
+
+Reason: the corrected vendored smoke prompt still exceeded the 10% parse
+failure gate; this fixed subset tests whether the prompt family contributes
+to failures without tuning prompts. Model scoring had already started in
+smoke, but P0 and official pilot scoring had not started.
+
+The fixed 40-call in-house diagnostic completed. Its 20 Channel-C calls had
+20 parse failures; its 20 Channel-D calls had 14. The latest corrected
+vendored smoke cache supplied 10 Channel-C and 9 Channel-D historical calls
+for comparison, with 6 and 2 parse failures respectively. Ten
+task/candidate/channel/condition pairs were available across prompt families;
+the others were explicitly unpaired. Parsed output was separately checked
+against the existing sandbox ground truth. Full counts, overlapping failure
+classifications, raw outputs, and pair records are in
+`data/smoke/diagnostics/inhouse/analysis.json`. The diagnostic is summarized
+in `results/pilot/Inhouse_Prompt_Diagnostic_20261112.md`.
+
+Both prompt families failed substantially. No further model or prompt trial
+was started, and no primary prompt-family amendment was made. The diagnostic
+does not change frozen conditions, thresholds, seeds, parser rules, or
+statistical decision rules. Pilot scoring had still not started.
+

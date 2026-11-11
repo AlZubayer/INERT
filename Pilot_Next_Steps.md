@@ -13,8 +13,8 @@ The pilot decides whether the full INERT project is built. It should take about 
 - **Implemented:** Step 0 verification and the Step 1 pipeline. See
   `results/pilot/Step0_Verification.md` and `results/pilot/Step1_Validation.md`.
 - **In progress:** the three-task smoke pipeline prepared tasks, candidates,
-  ground truth, thoughts, and items. WM-C smoke scoring was stopped after the
-  Channel-D prompt repair failed the parse gate (see Step 2 below).
+  ground truth, thoughts, and items. The corrected Channel-C/Channel-D renderer
+  was validated and its WM-C smoke rerun stopped at the parse gate (see Step 2).
 - **Not done:** a complete smoke run, P0, full pilot data generation, or
   experimental results.
 
@@ -63,6 +63,14 @@ prompt-adaptation repair was applied. In the interrupted rerun, Channel C had
 2 failures in 18 records (11.1%) and Channel D had 4 in 12 (33.3%). Scoring
 stopped as required; no further prompt adjustment or later stage has run.
 See `results/pilot/deviations.md` for exact changes and cache handling.
+
+The follow-up renderer repair at commit `3b2239a` passed 184 tests and both
+Ruff checks. Previous active smoke items, scores, and WM-C cache were archived,
+then 310 items were rebuilt. The new WM-C smoke rerun stopped early: 19
+completed cached calls included 6/10 Channel-C and 2/9 Channel-D parse
+failures (8/19 overall). See
+`results/pilot/Smoke_Renderer_Validation_20261112.md` for the traceable
+failure evidence. The smoke gate is still not passed.
 
 - [ ] 3 tasks, WM-C only, every stage end to end.
 - [ ] Open 10 rendered items by hand and read them. Check the text sits where it should and the `T0` items have no leftover artefacts.
