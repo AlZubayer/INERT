@@ -56,7 +56,6 @@ def test_vendored_channel_d_repair_preserves_inputs(condition: str, true_pass: b
     assert "RESULT: 3/3" not in content
 
 
-
 @pytest.mark.parametrize("condition", load_config()["conditions"])
 def test_vendored_channel_c_uses_terminal_action_schema(condition: str) -> None:
     config = load_config()
