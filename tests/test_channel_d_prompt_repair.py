@@ -49,6 +49,9 @@ def test_vendored_channel_d_repair_preserves_inputs(condition: str, true_pass: b
         "name": "run_command",
         "arguments": {"command": "python run_tests.py"},
     }
+    assert "\n\nFor the latest run_command tool call" in content
+    assert 'response":For the latest run_command tool call' not in content
+    assert "The denominator n is len(TESTS) in run_tests.py;" in content
     assert content.endswith("Return only the test harness stdout as one line: RESULT: k/n")
     assert "RESULT: 3/3" not in content
 
