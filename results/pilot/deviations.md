@@ -205,3 +205,34 @@ was started, and no primary prompt-family amendment was made. The diagnostic
 does not change frozen conditions, thresholds, seeds, parser rules, or
 statistical decision rules. Pilot scoring had still not started.
 
+## 2026-11-12: owner-authorized world-model failure isolation diagnostic
+
+The owner authorized the fixed A–F mechanism-isolation protocol in
+`results/pilot/WM_Failure_Isolation_Protocol.md` after the smoke gate failed.
+This diagnostic is separate from official smoke, P0, and pilot scoring. A
+deterministic 148-case maximum manifest, including the conditional eight-call
+F2 variant, was fixed before any diagnostic inference under
+`data/smoke/diagnostics/failure_isolation_20261112/`. The WM-C and exact
+two-shard WM-B Q4_K_M weights were SHA-256 verified; the WM-B shards were
+downloaded from their pinned Hugging Face revision. The diagnostic uses
+independent response files and caches and preserves all earlier evidence.
+
+The only intentionally varied diagnostic inputs are the synthetic controls in
+A–C, the two existing prompt families in C–E, model size in E, and the
+protocol's conditional `--parallel 1` runtime setting in F2. Frozen pilot
+thresholds, seeds, text conditions, parsers, candidate code, MBPP tests,
+prompt templates, scoring, and decision rules were not changed. No diagnostic
+response was inserted into an official score file. Smoke scoring had already
+started and failed; P0 and official pilot scoring had not started.
+
+The fixed diagnostic completed A 8/8, B 20/20, C 16/16 plus four Docker
+truth checks, D 16/16, E 80/80, and the conditional F2 8/8. F1 inspected
+actual server logs and `/props`; the default had four 8,192-token slots, so
+F2's `--parallel 1` comparison was required. F3 was not run because an
+alternate quantization has no separate approval. WM-B's E calls all parsed,
+but only 25/80 matched executed pass counts. The full GitHub-readable audit
+is `results/pilot/WM_Failure_Isolation_Results_20261112.md`; exact inputs,
+raw responses, cache evidence, and analysis remain under the isolated ignored
+`data/` directory. No smoke gate was opened, and P0/pilot scoring remained
+unstarted.
+
