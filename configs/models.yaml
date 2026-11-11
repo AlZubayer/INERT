@@ -1,0 +1,111 @@
+verified_on: '2026-11-11'
+models:
+  wm_a:
+    source: Qwen/Qwen-AgentWorld-35B-A3B
+    source_revision: 60d2b0434a53d2e62a7c00a489586815d94ebffb
+    license: apache-2.0
+    license_url: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B/blob/60d2b0434a53d2e62a7c00a489586815d94ebffb/LICENSE
+    gguf_repository: DevQuasar/Qwen.Qwen-AgentWorld-35B-A3B-GGUF
+    gguf_revision: d5ab6b74dad26a7dcb1fd9b5692d266573d057f2
+    gguf_license: Apache-2.0 (upstream weights; quantization card has no separate
+      license)
+    files:
+    - filename: Qwen.Qwen-AgentWorld-35B-A3B.Q3_K_M.gguf
+      sha256: c09fd9ac9ce9f121e6e500aaeb598e407aa4c29abe3039597671f9c05c94df28
+      size_bytes: 16764765056
+      path: data/models/wm_a/Qwen.Qwen-AgentWorld-35B-A3B.Q3_K_M.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    - filename: Qwen.Qwen-AgentWorld-35B-A3B.Q4_K_M.gguf
+      sha256: 98de3cd55f5bd89a15708e084ccbb838ff00dec6c35e9daa15eb3f3fad596bdd
+      size_bytes: 21166758784
+      path: data/models/wm_a/Qwen.Qwen-AgentWorld-35B-A3B.Q4_K_M.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    n_gpu_layers: null
+    layer_count: 40
+    architecture_config_url: https://huggingface.co/Qwen/Qwen-AgentWorld-35B-A3B/resolve/60d2b0434a53d2e62a7c00a489586815d94ebffb/config.json
+  wm_b:
+    source: Qwen/Qwen2.5-7B-Instruct
+    source_revision: a09a35458c702b33eeacc393d103063234e8bc28
+    license: apache-2.0
+    license_url: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/blob/a09a35458c702b33eeacc393d103063234e8bc28/LICENSE
+    gguf_repository: Qwen/Qwen2.5-7B-Instruct-GGUF
+    gguf_revision: bb5d59e06d9551d752d08b292a50eb208b07ab1f
+    gguf_license: apache-2.0
+    files:
+    - filename: qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf
+      sha256: dfce12e3862a5283ccfb88221b48480e58745165de856439950d0f22590580db
+      size_bytes: 3993201344
+      path: data/models/wm_b/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    - filename: qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf
+      sha256: 539cf93f78e887edea1c04e2d7d8cdaca9d01dae9c9025bcb8accbe29df3d72a
+      size_bytes: 689872288
+      path: data/models/wm_b/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    n_gpu_layers: 99
+  wm_c:
+    source: Qwen/Qwen2.5-1.5B-Instruct
+    source_revision: 989aa7980e4cf806f80c7fef2b1adb7bc71aa306
+    license: apache-2.0
+    license_url: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/989aa7980e4cf806f80c7fef2b1adb7bc71aa306/LICENSE
+    gguf_repository: Qwen/Qwen2.5-1.5B-Instruct-GGUF
+    gguf_revision: 91cad51170dc346986eccefdc2dd33a9da36ead9
+    gguf_license: apache-2.0
+    files:
+    - filename: qwen2.5-1.5b-instruct-q4_k_m.gguf
+      sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e
+      size_bytes: 1117320736
+      path: data/models/wm_c/qwen2.5-1.5b-instruct-q4_k_m.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    n_gpu_layers: 99
+  proposer:
+    source: Qwen/Qwen2.5-Coder-7B-Instruct
+    source_revision: c03e6d358207e414f1eca0bb1891e29f1db0e242
+    license: apache-2.0
+    license_url: https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/blob/c03e6d358207e414f1eca0bb1891e29f1db0e242/LICENSE
+    gguf_repository: Qwen/Qwen2.5-Coder-7B-Instruct-GGUF
+    gguf_revision: 13fb94bfda8c8cf22497dc57b78f391a9acb426a
+    gguf_license: apache-2.0
+    files:
+    - filename: qwen2.5-coder-7b-instruct-q4_k_m.gguf
+      sha256: 509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c
+      size_bytes: 4683073536
+      path: data/models/proposer/qwen2.5-coder-7b-instruct-q4_k_m.gguf
+      sha256_source: Hugging Face LFS metadata
+      local_verified: false
+    n_gpu_layers: 99
+dataset:
+  id: google-research-datasets/mbpp
+  revision: 4bb6404fdc6cacfda99d4ac4205087b89d32030c
+  config: sanitized
+  license:
+  - cc-by-4.0
+  files:
+  - filename: sanitized/prompt-00000-of-00001.parquet
+    sha256: 73c623309b7b5d65fd5661204b35f779f8e66301aa9832d1ad4b8fc3b21151fd
+    git_blob: 7595068ee474218bcbdad2089bee2dadbb0230cf
+    local_verified: true
+  - filename: sanitized/test-00000-of-00001.parquet
+    sha256: e9e9efa2c0d59ef5e55537a9d126b8f875d5ac010a8d75628d76824884e15850
+    git_blob: bd24437afd440b65222aa9203f5bcdac44dd893d
+    local_verified: true
+  - filename: sanitized/train-00000-of-00001.parquet
+    sha256: d95f8ad6d2fff08fe4826122d6e3e31f75716825d0c5c340d297aca5e9e0de0e
+    git_blob: 3f61281246665995ff3763fee4cfb6990a1c1a80
+    local_verified: true
+  - filename: sanitized/validation-00000-of-00001.parquet
+    sha256: 27e065fcab3c863959933328a7fdbf404e1bcb5464b1be6fe0dcd9530e420204
+    git_blob: 7d3f140ca41a59abb8dccd283836e261e6705a6d
+    local_verified: true
+serving:
+  executable: data/tools/llama/bin/llama-server.exe
+  build: b12110
+  commit: cd959bae9
+  architecture: qwen35moe
+  architecture_source_url: https://github.com/ggml-org/llama.cpp/blob/b12110/src/llama-arch.cpp
+  inference_load_test: not_run_step_3_p0

@@ -1,0 +1,25 @@
+System:
+You are a simulator of a tool-execution environment for a coding agent.
+Tools:
+- write_files(files): writes the given files to the working directory. Returns a confirmation line.
+- run_command(command): runs a shell command with Python 3.11 available. Returns exactly the command's terminal output.
+You are given the conversation so far. Output exactly what the environment returns for the agent's latest tool call, and nothing else.
+Do not explain. Do not add commentary. Do not use code fences.
+
+User:
+Conversation so far:
+
+Agent:
+<tool_call>
+{write_files_call_json}
+</tool_call>
+
+Environment:
+Files written: solution.py, run_tests.py
+
+Agent:
+{thought_line}<tool_call>
+{"name": "run_command", "arguments": {"command": "python run_tests.py"}}
+</tool_call>
+
+Environment:

@@ -1,0 +1,14 @@
+System:
+You are a coding agent working in a terminal through tool calls.
+
+User:
+You have just written solution.py for this task:
+
+{task_prompt}
+
+solution.py:
+{code_stripped}
+
+Your next step is to run the tests with `python run_tests.py`.
+Write the one- or two-sentence Thought you would state before making that tool call.
+Reply with the thought text only.

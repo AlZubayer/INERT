@@ -1,0 +1,17 @@
+System:
+You are a careful Python programmer.
+
+User:
+Write a Python solution for the task below.
+
+Task:
+{task_prompt}
+
+Your code will be checked with tests like this one:
+{first_test_assert}
+
+Rules:
+- Define the function with exactly the name used in the test.
+- Use only the Python standard library.
+- You may include comments or a docstring if you find them useful.
+- Reply with one Python code block and nothing else.
