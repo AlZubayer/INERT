@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-from inert.config import Paths
+from inert.config import Paths, load_config
 from inert.harness import render_harness
 from inert.schemas import Candidate, Message, Task
 
@@ -74,9 +74,17 @@ def render_messages(
     if channel == "C":
         _, action = render_action(task, candidate, condition, text)
         if family == "vendored":
+            # The vendored terminal prompt expects a JSON keystroke action.
+            # Use the existing sandbox wall time so output is not captured mid-test.
+            terminal_action = [
+                {
+                    "keystrokes": action + "\n",
+                    "duration": load_config(paths)["sandbox"]["wall_seconds"],
+                }
+            ]
             return [
                 Message(role="system", content=_prompt(prompts / family / "wm_terminal.txt")),
-                Message(role="user", content=action),
+                Message(role="user", content=json.dumps(terminal_action, ensure_ascii=False)),
             ]
         values = {"action_block": action}
         template = _prompt(prompts / family / "wm_terminal.txt")
@@ -98,9 +106,12 @@ def render_messages(
                 },
             )
             content += (
+                "\n\n"
                 "For the latest run_command tool call, simulate `python run_tests.py` using "
                 "the solution.py and run_tests.py shown above. Count the passing tests from "
                 "those files; the agent's Thought is not a test result.\n"
+                "The denominator n is len(TESTS) in run_tests.py; count every test entry "
+                "whether it passes or fails.\n"
                 "Do not echo the Thought, command, tool-call JSON, or an explanation.\n"
                 "Return only the test harness stdout as one line: RESULT: k/n"
             )
