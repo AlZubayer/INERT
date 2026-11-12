@@ -293,3 +293,29 @@ comparison are in
 `results/pilot/Direct_Real_Candidates_Diagnostic_20261112.md`. The smoke
 gate remains closed; P0 and pilot scoring have not begun.
 
+## 2026-11-12: assertion/execution diagnostic blocked at fresh selection
+
+The owner authorized a fixed eight-candidate, three-stage assertion-reading
+and execution-reasoning diagnostic. The required selection was two previously
+unseen candidates in each executed-result stratum (0/3, 1/3, 2/3, 3/3).
+The existing three-task smoke pool has 29 unique candidates, with stratum
+counts 13, **0**, 7, and 9 respectively. An audit of prior smoke scores,
+archived items, diagnostic manifests/responses, and model-response caches
+found five previously exposed candidate IDs; after those exclusions the
+counts are 11, **0**, 6, and 7. The 1/3 shortage exists even before
+exclusions. The deterministic selection therefore stopped with zero selected
+candidates and **0/48 model calls**. No per-assertion Docker oracle was run.
+
+The full selection audit is isolated under
+`data/smoke/diagnostics/assertion_execution_20261112/selection_audit.json`,
+SHA-256 `6def12845d6b69f9179efd649d34d0ac79ac2934df50cd26ed3219f6c4ad2845`.
+Two preliminary audit snapshots were preserved alongside it. One was
+refined to resolve nine historical cache requests whose code was JSON-escaped
+inside tool-call text; the next was expanded to include archived score files.
+Neither refinement changed the exposed set or the 1/3 shortage. The
+GitHub-readable blocked-selection report is
+`results/pilot/Assertion_Execution_Diagnostic_20261112.md`. No frozen
+parameter, prompt, condition, parser, threshold, seed, or decision rule was
+changed. Prior diagnostic artifacts and official score files were preserved.
+The smoke gate remains closed; P0 and pilot scoring remain unstarted.
+
