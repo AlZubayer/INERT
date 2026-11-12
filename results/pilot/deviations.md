@@ -353,3 +353,35 @@ are in `results/pilot/Assertion_Candidate_Acquisition_20261112.md`. The
 48-call WM-B/WM-C diagnostic was not run; official smoke, P0, and pilot
 scoring remain unstarted.
 
+## 2026-11-12: owner-authorized balanced assertion diagnostic selection
+
+The owner authorized resuming **only** the previously blocked selection stage
+after fresh candidate acquisition. For this diagnostic alone, the `1/3`
+stratum uses the predeclared two-candidate acquisition shortlist from
+different tasks (`acq-mbpp-563-g00`, `acq-mbpp-622-g00`). The original
+ascending-candidate-ID rule continues for `0/3`, `2/3`, and `3/3`. This is an
+explicit prospective clarification of the diagnostic selection rule. It does
+not alter the frozen pilot design, text conditions, thresholds, parser, seeds,
+or statistical decisions.
+
+The resumed selection independently reconciled all 29 original and 79 new
+candidate records with their source, task, three original tests, Docker
+executions, code hashes, and exposure audits. It rechecked all eight selected
+aggregate outcomes through the network-disabled Docker sandbox, without a
+per-assertion oracle. Historical inference sources (three item files, four
+diagnostic manifests, four score files, 17 WM caches, including 300 cached
+requests) were scanned; no acquired candidate ID, code hash, or source was
+found in prior WM inputs. The selected eight have two per Docker result
+stratum and three source tasks. One selected generated source contains a
+top-level assertion, which was preserved and disclosed.
+
+The ignored frozen manifest is
+`data/smoke/diagnostics/assertion_execution_20261112/selection_resume/selection_manifest.json`,
+SHA-256 `3aed60838f4c44dc5a8fa76b0bcf858ffb37f5d8de5c5ab8d267d0a50add37eb`.
+Full source, exposure, and Docker evidence are in separate files in that
+directory; `results/pilot/Assertion_Execution_Selection_20261112.md` is the
+GitHub-readable report. No WM-B/WM-C diagnostic calls were made in this
+selection stage, and no prior score, cache, diagnostic audit, official smoke
+record, P0 record, or pilot result was overwritten. The original smoke gate
+remains closed; P0 and pilot scoring remain unstarted.
+
