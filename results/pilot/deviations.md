@@ -260,3 +260,36 @@ Supplying the denominator made no paired difference. No previous diagnostic,
 smoke, or official pilot data were modified. The official smoke gate remains
 closed; P0 and pilot scoring remain unstarted.
 
+## 2026-11-12: owner-authorized real-candidate direct pass-count diagnostic
+
+The owner authorized one fixed 16-call diagnostic on the four previously
+selected, Docker-executed real MBPP candidates. It reused the exact
+DIRECT_COUNT and FIXED_DENOMINATOR message templates from the prior synthetic
+diagnostic, replacing only `solution.py` code and the three original test
+assertions. All inputs were neutral T0. No existing primary or fallback
+prompt, misleading-text condition, threshold, seed, parser, scoring rule,
+model, or experimental-design definition was changed. This diagnostic is
+separate from official smoke, P0, and pilot scoring.
+
+The complete input manifest was written before inference under
+`data/smoke/diagnostics/direct_real_candidates_20261112/`, SHA-256
+`3ffba5941fdb81138e1d202df2860c3f569e28f4868ecd80cf1bfce35f1579d8`.
+Candidate and original test hashes were checked against the smoke dataset
+and previous failure-isolation T0 manifest. All four recorded results were
+independently reproduced through the network-disabled Docker sandbox;
+`docker_truth.json` SHA-256 is
+`db0b534449e4c3cbb1d5a12a36c5c34f328f6ef01affb3b95875866ac2f8a310`.
+The exact WM-C weight and both WM-B shards were SHA-256 verified. WM-C and
+WM-B ran sequentially, with separate ignored caches. All 16 calls were new
+cache misses, and raw API bodies, metadata, parsed outputs, and exact input
+messages remain in the isolated ignored directory. Existing diagnostics,
+smoke records, and pilot records were not overwritten.
+
+All 16 responses were strict one-line `RESULT` outputs, but WM-C had one
+wrong-denominator `3/6` response, so only 15/16 parsed. WM-C exact count was
+3/8; WM-B exact count was 4/8. Neither model predicted the 2/3 candidate
+exactly under either interface. The full evidence and historical T0
+comparison are in
+`results/pilot/Direct_Real_Candidates_Diagnostic_20261112.md`. The smoke
+gate remains closed; P0 and pilot scoring have not begun.
+
