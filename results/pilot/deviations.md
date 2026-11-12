@@ -385,3 +385,33 @@ selection stage, and no prior score, cache, diagnostic audit, official smoke
 record, P0 record, or pilot result was overwritten. The original smoke gate
 remains closed; P0 and pilot scoring remain unstarted.
 
+## 2026-11-12: owner-authorized frozen assertion diagnostic execution
+
+The owner authorized the previously selected eight-candidate assertion-reading
+and execution-reasoning diagnostic as a separate 48-call local study. This
+diagnostic execution is outside the original pilot stage order and does not
+change any frozen pilot condition, threshold, seed, parser, prompt template,
+or decision rule. The frozen selection manifest SHA-256 was
+`3aed60838f4c44dc5a8fa76b0bcf858ffb37f5d8de5c5ab8d267d0a50add37eb`.
+The exact source and aggregate oracle archives passed their published checksums.
+
+The separate network-disabled Docker per-assertion oracle verified eight
+three-test vectors against all eight frozen aggregate outputs. Its SHA-256 is
+`305c33612c6ab146c32c31d85ce27b1b776acc85c755d36f5915b3260955e3a8`.
+All 48 Stage A/B/C prompts for WM-B and WM-C were frozen before inference in
+`data/smoke/diagnostics/assertion_execution_20261112/run_48/manifest.json`,
+SHA-256 `426b455f3b371d62fbaf483a900cc4489e626cff12b8bfec332dc1a61f4a0e9a`.
+The local Q4_K_M GGUF hashes, server binary, and frozen decoding settings were
+verified. The 48 calls completed with no cache hits; raw requests, responses,
+Docker evidence, and derived analysis remain isolated in the ignored `run_48/`
+directory. No historical or official score or cache was overwritten.
+
+The GitHub-readable report is
+`results/pilot/Assertion_Execution_Diagnostic_Run_20261112.md`. WM-B had 4/8
+strict exact assertion extractions, 0/8 format-valid individual-test responses,
+and 2/8 correct aggregate counts. WM-C had 0/8 strict bare-JSON extractions,
+8/8 format-valid individual-test responses, 12/24 correct individual outcomes,
+0/8 exact three-test vectors, and 2/8 correct aggregate counts. These are
+diagnostic observations, not pilot results. The official smoke gate remains
+closed; P0 and pilot scoring remain unstarted.
+
