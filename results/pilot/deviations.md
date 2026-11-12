@@ -319,3 +319,37 @@ parameter, prompt, condition, parser, threshold, seed, or decision rule was
 changed. Prior diagnostic artifacts and official score files were preserved.
 The smoke gate remains closed; P0 and pilot scoring remain unstarted.
 
+## 2026-11-12: owner-authorized fresh candidate acquisition for blocked assertion diagnostic
+
+The owner authorized an isolated acquisition stage to remedy the empty fresh
+`1/3` stratum that blocked the previously approved assertion/execution
+diagnostic. This preparation is a deviation from the original pilot stage
+order, not official pilot generation or scoring. No frozen condition,
+threshold, seed, text template, parser, or decision rule was changed. The
+unchanged pinned MBPP sanitized dataset, local Qwen2.5-Coder-7B-Instruct
+Q4_K_M proposer, original proposer prompt, and network-disabled Docker
+sandbox were used. All outputs and caches are isolated under
+`data/smoke/diagnostics/assertion_candidate_acquisition_20261112/`; historical
+smoke, diagnostic, and pilot records were preserved.
+
+The complete 392-task eligible-unused list was sorted, shuffled with
+`random.Random(20261111)`, and the first eight task IDs and all 128 possible
+attempts were frozen before inference. The task-selection manifest SHA-256
+is `463429468e371ac5cb4b9ab2ee3ecf885004f5b5392312ce7c17cf6b302d91e4`;
+the attempt manifest SHA-256 is
+`e558de4d853f2537e894bd6eb3f7b10cf166ca27af5a80f5fba080d9824906eb`.
+All eight reference solutions passed `3/3` in a fresh Docker check. Five
+complete task batches were processed, with 80 proposer calls, 79 unique
+accepted candidates, and 79 original-three-test Docker executions. Six
+importable `1/3` candidates were found across two tasks, so the authorized
+early-stop condition fired after the fifth batch. The new Docker distribution
+was 43 `0/3`, 6 `1/3`, 6 `2/3`, and 24 `3/3`; no result was unusable. The
+freshness audit SHA-256 is
+`a24bc890f40362a0e6cfcc3851fa52fea954c449fa80d76ced825e48a37ae2e9`.
+The combined fresh pool now has 54, 6, 12, and 31 candidates in those
+respective strata. Its status is `READY_FOR_SELECTION_REVIEW`, not a completed
+diagnostic or a passed smoke gate. Full details and selected candidate hashes
+are in `results/pilot/Assertion_Candidate_Acquisition_20261112.md`. The
+48-call WM-B/WM-C diagnostic was not run; official smoke, P0, and pilot
+scoring remain unstarted.
+
