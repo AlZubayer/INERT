@@ -236,3 +236,27 @@ raw responses, cache evidence, and analysis remain under the isolated ignored
 `data/` directory. No smoke gate was opened, and P0/pilot scoring remained
 unstarted.
 
+## 2026-11-12: owner-authorized direct pass-count diagnostic
+
+The owner authorized one prospective 16-call diagnostic to separate test
+counting, pass-count prediction, and terminal/tool interface effects. It
+reused the four Docker-verified Stage-C synthetic source/assertion controls
+without altering their code, tests, or ground truth. The new fixed system
+message and DIRECT_COUNT/FIXED_DENOMINATOR final instructions appear exactly
+in `results/pilot/Direct_Pass_Count_Diagnostic_20261112.md`. This interface
+was used only in isolated diagnostic calls; no registered prompt, condition,
+threshold, parser, seed, or decision rule changed.
+
+The complete manifest was written before inference under
+`data/smoke/diagnostics/direct_pass_count_20261112/`, SHA-256
+`77f74e1283ff10236e71beb8e1c3c0d7f8ac929312cabee5b45a32c8b7c4b5d9`.
+It records exact messages, source and Docker-truth hashes, sampling, server,
+and SHA-256-verified WM-C and both WM-B weight shards. Independent caches,
+raw API bodies, response metadata, and analysis are in that ignored
+directory. All 16 calls were new cache misses; the two models ran
+sequentially. Every response was a strict, parser-valid `RESULT` line with
+the correct denominator. WM-C had 6/8 exact pass counts; WM-B had 8/8.
+Supplying the denominator made no paired difference. No previous diagnostic,
+smoke, or official pilot data were modified. The official smoke gate remains
+closed; P0 and pilot scoring remain unstarted.
+
