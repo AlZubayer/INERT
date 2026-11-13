@@ -1,8 +1,10 @@
 import logging
+import re
 import subprocess
 import threading
 from dataclasses import asdict
 from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 import yaml
@@ -10,7 +12,7 @@ import yaml
 from inert.audit import Progress, StopRequired, record_deviation
 from inert.config import Config, Paths
 from inert.models import load_models, model_session
-from inert.parse import parse_result
+from inert.parse import ParsedResult, parse_result
 from inert.schemas import Item, Score, Task, atomic_text, read_jsonl, write_json, write_jsonl
 from inert.server import ServerError
 
@@ -23,17 +25,53 @@ def feasibility_decision(median_seconds: float, thresholds: Config) -> str:
     return "drop_wm_a"
 
 
+def select_p0_items(
+    tasks: list[Task], items: list[Item], config: Config
+) -> tuple[dict[str, Task], list[Item]]:
+    selected_tasks = tasks[: config["p0"]["tasks"]]
+    task_map = {task.task_id: task for task in selected_tasks}
+    if len(task_map) != config["p0"]["tasks"]:
+        raise ValueError("P0 requires 12 distinct ready tasks.")
+    selected_items = [item for item in items if item.task_id in task_map][: config["p0"]["calls"]]
+    if len(selected_items) != config["p0"]["calls"]:
+        raise ValueError("P0 requires 100 prepared items from the first 12 ready tasks.")
+    return task_map, selected_items
+
+
+def p0_quantizations(paths: Paths, registry: Config) -> list[str]:
+    q3_files = [
+        paths.root / entry["path"]
+        for entry in registry["models"]["wm_a"]["files"]
+        if "q3_k_m" in entry["filename"].lower()
+    ]
+    if q3_files and all(path.is_file() for path in q3_files):
+        return ["Q4_K_M", "Q3_K_M"]
+    return ["Q4_K_M"]
+
+
+def truncated_before_result(finish_reason: str | None, parsed: ParsedResult) -> bool:
+    return finish_reason == "length" and parsed.n_pred is None
+
+
+def oom_from_load_error(error: ServerError) -> bool:
+    match = re.search(r"see (.+?\.log)(?:\.|$)", str(error))
+    if match is None:
+        return False
+    log_path = Path(match.group(1))
+    if not log_path.is_file():
+        return False
+    error_text = log_path.read_text(encoding="utf-8", errors="replace").lower()
+    return any(
+        message in error_text for message in ("out of memory", "failed to allocate", "cudamalloc")
+    )
+
+
 def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
     registry = load_models(paths)
     tasks = read_jsonl(paths.tasks, Task)
-    task_map = {task.task_id: task for task in tasks[: config["p0"]["tasks"]]}
-    items = [item for item in read_jsonl(paths.items, Item) if item.task_id in task_map][
-        : config["p0"]["calls"]
-    ]
-    if len(items) != config["p0"]["calls"]:
-        raise ValueError("P0 requires 100 prepared items from the first 12 ready tasks.")
+    task_map, items = select_p0_items(tasks, read_jsonl(paths.items, Item), config)
     outcomes = []
-    for quant in ["Q4_K_M", "Q3_K_M"]:
+    for quant in p0_quantizations(paths, registry):
         max_layers = registry["models"]["wm_a"]["layer_count"] + 1
         trials = range(max_layers, -1, -1) if quant == "Q4_K_M" else [max_layers]
         for layers in trials:
@@ -72,9 +110,8 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                                 parsed = parse_result(
                                     completion.raw_output, task_map[item.task_id].n_tests
                                 )
-                                truncated += (
-                                    completion.finish_reason == "length"
-                                    and parsed.parse_status == "fail"
+                                truncated += truncated_before_result(
+                                    completion.finish_reason, parsed
                                 )
                                 scores.append(
                                     Score(
@@ -104,7 +141,7 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                                     paths,
                                     f"P0 {quant}: truncated without RESULT above 5%; "
                                     "raise WM-A max_tokens to 2048 under section 5.2.",
-                                    False,
+                                    True,
                                 )
                                 parameters["max_tokens"] = config["p0"]["extended_max_tokens"]
                                 continue
@@ -112,6 +149,8 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                     finally:
                         stopped.set()
                         watcher.join(timeout=11)
+                    if not peak:
+                        raise StopRequired("P0 could not measure GPU memory with nvidia-smi.")
                     latencies = [s.latency_s for s in scores]
                     fail_rate = sum(s.parse_status == "fail" for s in scores) / len(scores)
                     if fail_rate > config["thresholds"]["parse_failure"]:
@@ -135,20 +174,17 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                         }
                     )
                     break
-            except ServerError:
-                logs = sorted((paths.data / "logs").glob("server-*.log"))
-                error_text = (
-                    logs[-1].read_text(encoding="utf-8", errors="replace").lower() if logs else ""
-                )
+            except ServerError as error:
                 logger.exception("WM-A load failed: %s layers=%s", quant, layers)
-                if not any(
-                    message in error_text
-                    for message in ("out of memory", "failed to allocate", "cudamalloc")
-                ):
+                if not oom_from_load_error(error):
                     raise StopRequired(
                         "WM-A could not be loaded. Review the server log "
                         "before substituting or dropping it."
-                    ) from None
+                    ) from error
+            except FileNotFoundError as error:
+                raise StopRequired(f"WM-A {quant} model file is unavailable.") from error
+    if not outcomes and "Q3_K_M" not in p0_quantizations(paths, registry):
+        raise StopRequired("WM-A Q4 could not load and the prescribed Q3 fallback is unavailable.")
     if not outcomes:
         result = {
             "decision": "drop_wm_a",
