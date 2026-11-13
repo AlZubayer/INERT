@@ -1,0 +1,19 @@
+<!-- {"channel": "C", "repository": "Qwen/AgentWorldBench (Hugging Face dataset)", "commit": "6b8d28437042434dcdd168434227ca0de408c5ba", "path": "terminal_test.jsonl, field prompt[turn_idx-1] (first-turn layout)", "license": "Apache-2.0", "instruction_suffix_sha256": "ed04f1deea4b3a5159f2fe5295a9b60ddbc6e5c5f08ba476eeb270429cd9c1fd", "prompt_sha256": "45b7ba55cb5ca39b5877b7a0f20b73ce725cbebe5f8b680d55878320e2adcc4d", "adaptations": "Text only. The user turn that Qwen-AgentWorld eval/eval.py sends as prompts[turn_idx-1]: turn header, Current State, fenced indent-2 JSON action, and the evaluated-turn instruction suffix, verbatim. Two slots replace the dataset's terminal state and action JSON."} -->
+### Turn 1
+**Current State:**
+{current_state}
+
+**Action:**
+```json
+{action_json}
+```
+
+Please analyze the input above and predict the realistic output/response that the environment would produce.
+
+Requirements:
+- Be precise and accurate in your prediction
+- Consider edge cases and error conditions
+- Maintain state consistency with previous interactions in this session
+- Match the expected output format
+
+First, think step by step to explain your reasoning. Then, provide the simulated environment observation wrapped strictly within the <predicted_observation></predicted_observation> tags.

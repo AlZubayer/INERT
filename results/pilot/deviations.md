@@ -415,3 +415,49 @@ and 2/8 correct aggregate counts. WM-C had 0/8 strict bare-JSON extractions,
 diagnostic observations, not pilot results. The official smoke gate remains
 closed; P0 and pilot scoring remain unstarted.
 
+
+## 2026-11-13: prompt-adaptation diagnostic for the vendored channels
+
+During the debugging session requested by the project owner, one isolated
+diagnostic compared the current vendored message assembly with assemblies
+closer to the upstream pipelines. It is outside the pilot stage order and is
+not smoke, P0, or pilot scoring. `src/inert/render.py`, both vendored prompt
+files, the in-house prompts, text conditions, sampling parameters, parser,
+thresholds, seeds, and decision rules were not changed.
+
+New vendored text: `prompts/vendored/wm_terminal_turn.txt` holds the user-turn
+layout and instruction suffix that Qwen-AgentWorld's `eval/eval.py` sends from
+the `Qwen/AgentWorldBench` dataset (revision
+`6b8d28437042434dcdd168434227ca0de408c5ba`, Apache-2.0). Text only was copied,
+after reading the first 3 MB of `terminal_test.jsonl` as data. It is used only
+by the diagnostic. The 2026-11-14 audit corrected its metadata header to
+`prompts[turn_idx-1]`, matching pinned `eval/eval.py`; the prompt body and
+archived inference messages were unchanged. The diagnostic-only renderer
+normalizes CRLF checkout line endings to preserve those exact messages on
+Windows; no official renderer was modified.
+
+The frozen manifest under
+`data/smoke/diagnostics/prompt_adaptation_20261113/` contains 594 unique
+prompt cases (11 smoke core-set candidates, nine conditions, variants
+C0/C1/C2 and D0/D1/D2). WM-C completed all 594 assignments, and WM-B
+completed another 264 (conditions T0, NEU_A, NEU_B, MIS_OUTCOME): **858
+model-call records total**, comprising 846 new calls and 12 exact cache hits
+for identical T0/NAT messages. The models ran one at a time with separate
+isolated caches. No earlier score, cache, or diagnostic file was modified.
+
+The tested upstream-style Channel-C turn worsened parser validity: WM-C
+failures rose from 58/99 to 99/99; WM-B failures rose from 0/44 to 8/44.
+The multiline C2 layout had 99/99 and 13/44 failures respectively. D1
+changed role labels, the empty-reference placeholder, and formatting
+together; WM-C failures fell from 64/99 to 42/99 but still exceeded the
+frozen 10% gate. The label effect alone is not identifiable. WM-B's three
+Channel-D variants had 0/44 parse failures and byte-identical raw outputs.
+The C1/C2 upstream suffix also asks for reasoning and tagged observations,
+which does not directly match the frozen `RESULT: k/n` parser; its parse
+failures cannot be attributed solely to the turn header or action formatting.
+No official renderer change was made. The small, three-task diagnostic does
+not establish pilot model validity or KT-A endpoints; full findings and
+limitations are in `results/pilot/Prompt_Adaptation_Diagnostic_20261113.md`.
+
+Scoring had already started in smoke only. The smoke gate remains closed; P0
+and pilot scoring remain unstarted.
