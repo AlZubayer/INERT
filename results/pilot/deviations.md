@@ -461,3 +461,70 @@ limitations are in `results/pilot/Prompt_Adaptation_Diagnostic_20261113.md`.
 
 Scoring had already started in smoke only. The smoke gate remains closed; P0
 and pilot scoring remain unstarted.
+
+## 2026-11-14: owner-authorized isolated WM-B engineering smoke, blocked before inference
+
+The owner authorized an engineering-only WM-B substitution to test the existing
+three-task smoke pipeline after repeated WM-C parsing failures. The registered
+smoke configuration remains WM-C; this preparation used an in-memory WM-B
+override and a separate ignored directory at
+`data/smoke/diagnostics/wm_b_engineering_smoke_20261114/`. The original WM-C
+failure evidence and scores remain in place. This substitution does not drop
+WM-C from scientific scoring and does not reopen the original smoke gate.
+No registered threshold, prompt, parser, text condition, primary endpoint,
+seed, or decision rule was changed. P0 and official pilot scoring remain
+unstarted.
+
+The three-task dataset, 310 existing rendered items, and local WM-B model
+were validated. The frozen engineering manifest SHA-256 is
+`68e97583b023e9acec815c0e14c9db97343afec6b0375c5f94b7eadbe71a552d`.
+Before any WM-B inference, the full pytest run changed one inventoried
+historical file:
+`data/smoke/diagnostics/assertion_execution_20261112/run_48/cache/sandbox.sqlite`
+from SHA-256 `7722ab53d01b60f2af5f56597d913ea932e194abcabf37e652ce1ee54022c246`
+to `0a02c5112a63710576970d47596fea6b914cfd205a15912d2369b7318ce96697`.
+A pre-existing Docker oracle test wrote through the historical sandbox cache
+even with `use_cache=False`. That test now uses a temporary cache. The other
+586 inventoried files retained their hashes, and a second full test run made
+no further historical changes. The original SQLite bytes are unavailable for
+restoration, so the inventory was not silently rebaselined. The engineering
+run stopped with **0/198 core calls** and no WM-B server start. The published
+report `results/pilot/WM_B_Engineering_Smoke_20261114.md` records the blocker.
+
+## 2026-11-14: accepted prospective baseline and sandbox cache repair
+
+The owner explicitly approved recovery from the one historical cache
+preservation failure with status
+`HISTORICAL_PRESERVATION_EXCEPTION_ACCEPTED`. The original before-test
+inventory and its failed hash comparison remain in the ignored engineering
+directory. A separate prospective inventory adopts the current hash only for
+`data/smoke/diagnostics/assertion_execution_20261112/run_48/cache/sandbox.sqlite`;
+it does not relabel the original preservation check as passed. The current
+database, an exact byte copy, a SQLite-consistent backup, and incident metadata
+are retained under `data/smoke/diagnostics/wm_b_engineering_smoke_20261114/`.
+The database passed `integrity_check` with 18 execution records. The earlier
+per-assertion oracle evidence also survives in separate JSON records. No
+trustworthy pre-test byte copy was found, so none was reconstructed.
+
+`DockerSandbox.run(..., use_cache=False)` now executes Docker without opening
+or writing a cache. Docker regression tests use temporary paths, and pytest
+no longer opens historical diagnostic SQLite caches; exported response
+accounting remains tested.
+The full suite passed with 244 tests, and the prospective 587-file inventory
+showed zero additional historical-file changes after validation. The frozen
+198-call WM-B core manifest and pinned local model identities verified before
+inference. The official smoke configuration remains WM-C; this approved
+substitution stays engineering-only. No frozen scientific parameter changed.
+
+The authorized 198-call WM-B core matrix then completed in its isolated
+directory: 194 new local requests and four exact duplicate in-run cache hits.
+The frozen parser accepted 198/198 responses (99/99 in each channel); there
+were no denominator errors, missing result lines, or length finishes. Exact
+Docker pass counts were predicted for 68/198 assignments. On the three-task
+smoke sample, T0 balanced accuracy was 0.5833 in Channel C and 0.5000 in
+Channel D; Channel D is below the registered 0.55 validity floor, while the
+all-cells-INVALID stop rule did not fire. The 10% parse stop rule did not fire.
+The prospective historical inventory showed zero additional modifications.
+These are engineering-only observations, not a pilot verdict or a replacement
+for the failed original WM-C smoke gate. No KT-C, P0, WM-A, WM-C, or official
+pilot scoring was started.

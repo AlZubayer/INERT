@@ -52,29 +52,30 @@ class DockerSandbox:
                     "Docker image is unavailable; pull the prescribed image before running."
                 )
             self.image_id = image.stdout.strip()
-        identity = json.dumps(
-            {
-                "source": source,
-                "harness": harness,
-                "config": cfg,
-                "image_id": self.image_id,
-                "protocol": "tmpfs-nonroot-v1",
-            },
-            sort_keys=True,
-        )
-        key = hashlib.sha256(identity.encode()).hexdigest()
-        cache_path = self.paths.cache("sandbox")
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(cache_path) as database:
-            database.execute(
-                "CREATE TABLE IF NOT EXISTS executions "
-                "(key TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL)"
+        if use_cache:
+            identity = json.dumps(
+                {
+                    "source": source,
+                    "harness": harness,
+                    "config": cfg,
+                    "image_id": self.image_id,
+                    "protocol": "tmpfs-nonroot-v1",
+                },
+                sort_keys=True,
             )
-            cached = database.execute(
-                "SELECT result FROM executions WHERE key = ?", (key,)
-            ).fetchone()
-        if cached and use_cache:
-            return SandboxResult(**json.loads(cached[0]))
+            key = hashlib.sha256(identity.encode()).hexdigest()
+            cache_path = self.paths.cache("sandbox")
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(cache_path) as database:
+                database.execute(
+                    "CREATE TABLE IF NOT EXISTS executions "
+                    "(key TEXT PRIMARY KEY, request TEXT NOT NULL, result TEXT NOT NULL)"
+                )
+                cached = database.execute(
+                    "SELECT result FROM executions WHERE key = ?", (key,)
+                ).fetchone()
+            if cached:
+                return SandboxResult(**json.loads(cached[0]))
         name = f"inert-{os.getpid()}-{time.monotonic_ns()}"
         archive = io.BytesIO()
         with tarfile.open(fileobj=archive, mode="w") as stream:
@@ -149,13 +150,14 @@ class DockerSandbox:
                     errors.read().decode("utf-8", errors="replace"),
                     done.returncode,
                 )
-                from dataclasses import asdict
+                if use_cache:
+                    from dataclasses import asdict
 
-                with sqlite3.connect(cache_path) as database:
-                    database.execute(
-                        "INSERT OR REPLACE INTO executions VALUES (?, ?, ?)",
-                        (key, identity, json.dumps(asdict(result))),
-                    )
+                    with sqlite3.connect(cache_path) as database:
+                        database.execute(
+                            "INSERT OR REPLACE INTO executions VALUES (?, ?, ?)",
+                            (key, identity, json.dumps(asdict(result))),
+                        )
                 return result
         except FileNotFoundError as exc:
             raise SandboxSetupError(

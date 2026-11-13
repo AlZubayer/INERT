@@ -43,9 +43,9 @@ def test_imports_preserve_assertions_and_count_toward_limit() -> None:
 
 
 @pytest.mark.docker
-def test_import_dependent_reference_passes_inside_sandbox() -> None:
+def test_import_dependent_reference_passes_inside_sandbox(tmp_path: Path) -> None:
     task = normalize_mbpp(imported_row())
-    result = DockerSandbox(Paths.discover(), load_config()["sandbox"]).run(
+    result = DockerSandbox(Paths(tmp_path), load_config()["sandbox"]).run(
         task.reference_code, render_harness(task.tests)
     )
     assert result.stdout == "RESULT: 3/3\n"

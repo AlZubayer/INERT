@@ -2,9 +2,7 @@ import ast
 import hashlib
 import json
 import re
-import sqlite3
 from collections import Counter
-from contextlib import closing
 
 import pytest
 
@@ -156,30 +154,9 @@ def test_local_archive_accounting_without_inference() -> None:
             group["valid"] += parsed.parse_status == "ok"
             group["exact"] += parsed.parse_status == "ok" and parsed.k_pred == truth[case.cand_id]
             group["wrong_n"] += parsed.parse_status == "fail" and parsed.n_pred is not None
-        db_path = (paths.data / "cache" / f"{model}.sqlite").resolve().as_posix()
-        with closing(sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)) as database:
-            cached = database.execute("SELECT count(*) FROM calls").fetchone()[0]
-            records = database.execute("SELECT key, request, response, completion FROM calls")
-            requests = {}
-            for key, request, body, completion in records:
-                assert hashlib.sha256(request.encode()).hexdigest() == key
-                payload = json.loads(request)
-                assert all(
-                    payload[name] == value
-                    for name, value in load_config(paths)["sampling"]["wm"].items()
-                )
-                assert payload["server_flags_that_affect_output"]["context_size"] == 8192
-                requests[json.dumps(payload["messages"], sort_keys=True)] = (
-                    json.loads(body),
-                    json.loads(completion),
-                )
-            for identifier, row in responses.items():
-                messages = [message.model_dump() for message in expected[identifier].messages]
-                body, completion = requests[json.dumps(messages, sort_keys=True)]
-                assert completion["raw_output"] == row.raw_output
-                assert completion["finish_reason"] == row.finish_reason
-                assert body["choices"][0]["message"]["content"] == row.raw_output
-        assert cached == assigned - sum(row.cache_hit for row in responses.values())
+        # Cache protocol and persistence are tested with temporary SQLite files
+        # in test_client_server.py. Historical diagnostic caches are never opened
+        # by pytest; this test checks their exported response records instead.
     assert totals == Counter({"records": 858, "cache_hits": 12, "valid": 425, "invalid": 433})
     assert groups[("wm_c", "C0")] == Counter(
         {"calls": 99, "hits": 2, "length": 82, "valid": 41, "exact": 15, "wrong_n": 37}

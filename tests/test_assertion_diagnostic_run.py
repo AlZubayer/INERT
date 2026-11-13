@@ -86,11 +86,11 @@ def test_stage_c_reuses_exact_direct_count_structure() -> None:
     assert _messages("B", code, tests) != messages
 
 
-def test_instrumented_oracle_matches_harness_exception_semantics_in_docker() -> None:
+def test_instrumented_oracle_matches_harness_exception_semantics_in_docker(tmp_path) -> None:
     if not shutil.which("docker"):
         pytest.skip("Docker is unavailable.")
-    paths = RunPaths(Paths.discover().root, "smoke")
-    sandbox = DockerSandbox(paths, load_config(paths)["sandbox"])
+    # This test makes fresh Docker calls. Keep its cache out of frozen diagnostic data.
+    sandbox = DockerSandbox(Paths(tmp_path), load_config(Paths.discover())["sandbox"])
     code = "def f(x):\n    if x == 0:\n        while True: pass\n    return x"
     tests = ["assert f(1) == 1", "assert f(2) == 3", "assert f(0) == 0"]
     result = sandbox.run(code, oracle_harness(tests, 1), use_cache=False)

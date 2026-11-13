@@ -1,4 +1,5 @@
 import ast
+from pathlib import Path
 
 import pytest
 
@@ -55,12 +56,14 @@ def test_strip_examples(source: str, expected: str) -> None:
         )
     ],
 )
-def test_strip_behavior_in_sandbox(source: str, expected: str, assertion: str) -> None:
+def test_strip_behavior_in_sandbox(
+    source: str, expected: str, assertion: str, tmp_path: Path
+) -> None:
     from inert.config import Paths, load_config
     from inert.harness import render_harness
     from inert.sandbox import DockerSandbox
 
-    sandbox = DockerSandbox(Paths.discover(), load_config()["sandbox"])
+    sandbox = DockerSandbox(Paths(tmp_path), load_config()["sandbox"])
     harness = render_harness([assertion])
     original = sandbox.run(source, harness)
     stripped = sandbox.run(strip_text(source), harness)
