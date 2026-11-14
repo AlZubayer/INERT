@@ -11,6 +11,7 @@ from inert.audit import StopRequired, stage_log
 from inert.config import Paths, load_config
 from inert.models import model_session
 from inert.p0 import run_p0
+from inert.p0_recovery import run_replay
 from inert.p0_selection import prepare_p0_manifest
 from inert.pipeline import build_items, choose_core, execute_candidates
 from inert.planning import model_items
@@ -170,6 +171,11 @@ def prepare_p0_command(ctx: typer.Context) -> None:
         logger.info("Frozen P0 selection: %s", manifest["manifest_sha256"])
 
     _run(ctx, "prepare-p0", run)
+
+
+@app.command("p0-telemetry-replay")
+def p0_telemetry_replay_command(ctx: typer.Context) -> None:
+    _run(ctx, "p0-telemetry-replay", run_replay)
 
 
 def _all_scores(paths: Paths, config: dict) -> list[Score]:

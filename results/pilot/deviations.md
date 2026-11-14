@@ -719,3 +719,84 @@ they are interpreter bytecode, not input data or historical evidence. The
 ignored inventory script now excludes only those two exact paths and retains
 the original hashes and scope for every frozen artifact. The first failed
 inventory result was preserved in this record; the check is rerun below.
+
+## 2026-11-14: owner-authorized isolated P0 call-62 telemetry replay
+
+**Status: `OWNER_AUTHORIZED_P0_CALL62_TELEMETRY_REPLAY`.** The prior WM-A P0
+trial stopped with 62/100 cached responses but only 61 matching live
+latency/VRAM measurement observations. The original call-62 response for
+`mbpp-633:mbpp-633-g10:D:NAT:kt_ab:vendored` remains in the original cache;
+its missing VRAM value cannot be reconstructed. The owner authorizes at most
+one independent replay of the exact request for telemetry validation, in a
+separate cache and supplemental measurement record. The original request,
+raw output, API response, latency, and incomplete measurement file must not
+be altered, deleted, or silently completed. The replay output must be
+compared byte for byte with the original. Any replay VRAM reading remains
+separate evidence and is not adopted as the original reading without a
+further owner-approved rule. This authorization does not permit P0 calls
+63-100, the 2,048-token escalation, a P0 decision, or pilot scoring. It is
+a measurement-protocol exception, not a change to the frozen scientific
+design; WM-A P0 scoring had already begun before this entry.
+
+The historical inventory's ignored runtime-artifact scope now also excludes
+only `data/p0/telemetry_recovery_20261114/`, where the authorized replay
+must write its separate cache and audit files. The frozen baseline hashes,
+original WM-A cache, original 61-observation measurement file, pilot inputs,
+and all other protected paths remain covered by their previous checks.
+The same scope also excludes the new ignored
+`data/p0/telemetry_attempts.jsonl` audit stream for any later authorized P0
+continuation. The stream records raw polling attempts and does not alter the
+original 61-observation measurement record.
+
+Before the isolated replay, `gpu_telemetry.py` was added to serialize all
+polling paths in one process and to audit every actual `nvidia-smi` attempt
+with UTC and monotonic times, argv, return code, raw stdout/stderr, duration,
+parse result, value, and acceptance. A poll allows one initial attempt and
+at most two retries with a fixed 0.1-second delay. A positive integer from
+the single detected GPU is required. Future authorized P0 polling passes an
+explicit ignored audit path; the original P0 measurement record is not
+modified. The one-call recovery command uses a separate SQLite cache, a
+durable one-attempt guard, and a supplemental measurement file. Its request
+key is checked against the original before inference. None of the frozen
+prompts, parser, sampling values, seeds, thresholds, or decision logic was
+changed. The pre-inference full suite passed 281 tests, and both Ruff checks
+passed.
+
+The earlier feasibility report abbreviated the original measurement filename
+in prose. The actual unchanged file is
+`data/p0/measurements/b9d09428692151008470b2de80be43b9cf5092093dee2d9ad70199d4db987099.json`
+(SHA-256 `b7d7bb3744a12136b315d12cfdf13a6a5ce84f352107fab6a8f3ddb953587a46`).
+The prior report is preserved; this entry records the path correction.
+
+The isolated replay was claimed once and made exactly one new live HTTP
+completion request with the original key
+`675281ba380346155c537838d325bf18de2e58f24b8b38dea854a5389e41478d`.
+The raw output matched the original byte for byte (SHA-256
+`0efa5258550aa36b1b405032959e77bca7b6a6f9597be41d58a6388d00419db0`).
+The replay API body hash was
+`bb0453a20923513b875d439ca55630939562366f7d39f73d9a2cbeb3fdc4e59b`,
+different from the original API body hash; these full response bodies were
+preserved separately. Replay latency was 96.56296379998093 s versus the
+original 106.37190800003009 s. Its independently sampled live peak was
+15,774 MiB from 652 live samples; one additional accepted idle preflight
+sample was recorded. All 653 telemetry invocations returned valid values,
+so the bounded retry path was covered by mocks but was not exercised live.
+No rejected telemetry attempt occurred. The replay cache contains one row,
+the original cache still contains 62, and the original 61-observation
+measurement file SHA-256 remains
+`b7d7bb3744a12136b315d12cfdf13a6a5ce84f352107fab6a8f3ddb953587a46`.
+An actual second invocation of the recovery command returned from the
+one-replay guard without starting a server or another live request. The
+replay measurement remains supplemental; it was not inserted into the
+original P0 record. No P0 decision or subsequent scoring occurred.
+
+The first post-report historical inventory check found no changed protected
+file, but identified the new recovery report as an added file because that
+path did not exist at the pre-P0 freeze. The ignored inventory helper now
+excludes only the new report path in addition to the explicitly scoped new
+runtime artifacts. It still compares the same 8,882 frozen current files
+and 8,852 historical files against their original SHA-256 baselines. The
+initial failed check is retained in this deviation record.
+The corrected inventory rerun passed with 8,882/8,852 protected files; the
+post-replay full test suite passed 281 tests, both Ruff checks passed, and
+the WM-A server was stopped with no residual lock.

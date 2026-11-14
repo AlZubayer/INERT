@@ -3,13 +3,13 @@
 import hashlib
 import json
 import math
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from inert.audit import StopRequired
 from inert.config import Config, Paths
+from inert.gpu_telemetry import sample_gpu_memory
 from inert.llm_client import CachedClient
 from inert.schemas import Score, write_json
 
@@ -18,20 +18,8 @@ SOURCE = (
 )
 
 
-def query_vram_mib() -> int:
-    try:
-        result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise StopRequired("P0 cannot measure GPU memory with nvidia-smi.") from error
-    values = result.stdout.strip().splitlines()
-    if result.returncode or len(values) != 1 or not values[0].strip().isdigit():
-        raise StopRequired("P0 received no valid single-GPU memory reading from nvidia-smi.")
-    return int(values[0].strip())
+def query_vram_mib(audit_path: Path | None = None) -> int:
+    return sample_gpu_memory(audit_path).mib
 
 
 def trial_identity(

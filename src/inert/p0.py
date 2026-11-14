@@ -129,14 +129,14 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                         ) -> None:
                             while not stopped.is_set():
                                 try:
-                                    peak.append(query_vram_mib())
-                                except StopRequired as error:
+                                    peak.append(query_vram_mib(paths.p0_telemetry_attempts))
+                                except Exception as error:
                                     monitor_errors.append(str(error))
                                     return
                                 stopped.wait(0.1)
 
                         watcher = threading.Thread(target=monitor, daemon=True)
-                        peak.append(query_vram_mib())
+                        peak.append(query_vram_mib(paths.p0_telemetry_attempts))
                         watcher.start()
                         live_requests = 0
                         request_keys: list[str] = []
@@ -154,7 +154,7 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                                     live_requests += 1
                                     if monitor_errors:
                                         raise StopRequired(monitor_errors[0])
-                                    peak.append(query_vram_mib())
+                                    peak.append(query_vram_mib(paths.p0_telemetry_attempts))
                                     window = peak[sample_start:]
                                     record_live_request(
                                         paths,

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import inert.gpu_telemetry as telemetry
 import inert.p0 as p0
 import inert.p0_measurement as measurement
 from inert.audit import StopRequired
@@ -82,11 +83,11 @@ def test_nvidia_smi_unavailable_or_invalid_stops(monkeypatch: pytest.MonkeyPatch
     def missing(*_: object, **__: object) -> None:
         raise FileNotFoundError("nvidia-smi")
 
-    monkeypatch.setattr(measurement.subprocess, "run", missing)
+    monkeypatch.setattr(telemetry.subprocess, "run", missing)
     with pytest.raises(StopRequired, match="cannot measure"):
         measurement.query_vram_mib()
     monkeypatch.setattr(
-        measurement.subprocess,
+        telemetry.subprocess,
         "run",
         lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1, "", "unavailable"),
     )
@@ -144,7 +145,7 @@ def test_p0_cache_only_without_evidence_cannot_write_decision(
         lambda _paths, _config: ({"manifest_sha256": "fixture"}, {"t0": task}, items),
     )
     monkeypatch.setattr(p0, "trial_identity", lambda *_args: identity())
-    monkeypatch.setattr(p0, "query_vram_mib", lambda: 100)
+    monkeypatch.setattr(p0, "query_vram_mib", lambda *_args: 100)
 
     class FakeClient:
         model_hash = "fixture-model"
@@ -184,7 +185,7 @@ def test_p0_live_mock_persists_vram_then_reuses_it_on_restart(
         lambda _paths, _config: ({"manifest_sha256": "fixture"}, {"t0": task}, items),
     )
     monkeypatch.setattr(p0, "trial_identity", lambda *_args: identity())
-    monkeypatch.setattr(p0, "query_vram_mib", lambda: 600)
+    monkeypatch.setattr(p0, "query_vram_mib", lambda *_args: 600)
     is_cached = False
 
     class FakeClient:
@@ -232,7 +233,7 @@ def test_interrupted_p0_combines_only_matching_live_measurements(
     )
     monkeypatch.setattr(p0, "trial_identity", lambda *_args: identity())
     phase = ["first"]
-    monkeypatch.setattr(p0, "query_vram_mib", lambda: 700 if phase[0] == "first" else 500)
+    monkeypatch.setattr(p0, "query_vram_mib", lambda *_args: 700 if phase[0] == "first" else 500)
 
     class FakeClient:
         model_hash = "fixture-model"

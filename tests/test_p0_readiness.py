@@ -102,7 +102,7 @@ def test_p0_records_each_failed_q4_load_without_claiming_q3_failed(
         "trial_identity",
         lambda *_args: {"server": {"arguments": ["--ctx-size", "8192"]}},
     )
-    monkeypatch.setattr(p0, "query_vram_mib", lambda: 600)
+    monkeypatch.setattr(p0, "query_vram_mib", lambda *_args: 600)
     log = tmp_path / "current-server.log"
     log.write_text("CUDA out of memory", encoding="utf-8")
 
