@@ -85,6 +85,10 @@ class Paths:
         return self.data / "p0" / "measurements"
 
     @property
+    def p0_load_attempts(self) -> Path:
+        return self.data / "p0" / "load_attempts.json"
+
+    @property
     def summary(self) -> Path:
         return self.results / "summary.json"
 

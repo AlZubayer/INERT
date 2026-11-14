@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import threading
@@ -62,14 +63,46 @@ def oom_from_load_error(error: ServerError) -> bool:
     )
 
 
+def _load_attempt_records(paths: Paths) -> list[dict]:
+    if not paths.p0_load_attempts.exists():
+        return []
+    try:
+        records = json.loads(paths.p0_load_attempts.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise StopRequired("P0 load-attempt audit is unreadable.") from error
+    if not isinstance(records, list) or any(not isinstance(row, dict) for row in records):
+        raise StopRequired("P0 load-attempt audit is invalid.")
+    return records
+
+
 def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
     registry = load_models(paths)
     manifest, task_map, items = load_p0_manifest(paths, config)
     outcomes = []
+    load_records = _load_attempt_records(paths)
     for quant in p0_quantizations(paths, registry):
         max_layers = registry["models"]["wm_a"]["layer_count"] + 1
         trials = range(max_layers, -1, -1) if quant == "Q4_K_M" else [max_layers]
         for layers in trials:
+            load_record = {
+                "quantization": quant,
+                "gpu_layers": layers,
+                "context_length": config["server"]["context_size"],
+                "started_utc": datetime.now(UTC).isoformat(),
+                "startup_result": "STARTED",
+                "trial_status": "STARTED",
+                "startup_seconds": None,
+                "server_arguments": None,
+                "server_log_path": None,
+                "server_pid": None,
+                "server_stopped": None,
+                "gpu_memory_peak_mib": None,
+                "gpu_memory_sample_count": 0,
+            }
+            load_records.append(load_record)
+            write_json(paths.p0_load_attempts, load_records)
+            client = None
+            peak: list[int] = []
             try:
                 with model_session(paths, config, "wm_a", quant, layers) as client:
                     parameters = dict(config["sampling"]["wm"])
@@ -84,7 +117,7 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                             parameters,
                             manifest["manifest_sha256"],
                         )
-                        peak: list[int] = []
+                        load_record["server_arguments"] = identity["server"]["arguments"]
                         monitor_errors: list[str] = []
                         stopped = threading.Event()
                         trial_started = time.perf_counter()
@@ -103,6 +136,7 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                                 stopped.wait(0.1)
 
                         watcher = threading.Thread(target=monitor, daemon=True)
+                        peak.append(query_vram_mib())
                         watcher.start()
                         live_requests = 0
                         request_keys: list[str] = []
@@ -224,16 +258,59 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                             "calls": len(scores),
                         }
                     )
+                    load_record["trial_status"] = "COMPLETE"
                     break
             except ServerError as error:
+                is_oom = oom_from_load_error(error)
+                load_record["startup_result"] = "OOM" if is_oom else "SERVER_ERROR"
+                load_record["trial_status"] = "LOAD_FAILED"
+                load_record["startup_seconds"] = error.startup_seconds
+                load_record["server_log_path"] = error.log_path
+                load_record["error_message"] = str(error)
                 logger.exception("WM-A load failed: %s layers=%s", quant, layers)
-                if not oom_from_load_error(error):
+                if not is_oom:
                     raise StopRequired(
                         "WM-A could not be loaded. Review the server log "
                         "before substituting or dropping it."
                     ) from error
             except FileNotFoundError as error:
+                load_record["startup_result"] = "MODEL_FILE_MISSING"
+                load_record["trial_status"] = "LOAD_FAILED"
+                load_record["error_message"] = str(error)
                 raise StopRequired(f"WM-A {quant} model file is unavailable.") from error
+            except Exception as error:
+                load_record["trial_status"] = "STOPPED"
+                load_record["error_message"] = str(error)
+                raise
+            finally:
+                if client is not None:
+                    load_record["server_arguments"] = (
+                        getattr(client, "server_command", None) or load_record["server_arguments"]
+                    )
+                    load_record["startup_seconds"] = (
+                        load_record["startup_seconds"]
+                        if load_record["startup_seconds"] is not None
+                        else getattr(client, "server_startup_seconds", None)
+                    )
+                    load_record["server_log_path"] = load_record["server_log_path"] or getattr(
+                        client, "server_log_path", None
+                    )
+                    load_record["server_pid"] = getattr(client, "server_pid", None)
+                    load_record["server_stopped"] = getattr(client, "server_shutdown_ok", None)
+                if load_record["server_stopped"] is None:
+                    load_record["server_stopped"] = not paths.server_lock.exists()
+                if load_record["startup_result"] == "STARTED":
+                    load_record["startup_result"] = (
+                        "LOADED"
+                        if load_record["startup_seconds"] is not None
+                        else "CACHE_ONLY"
+                        if load_record["trial_status"] == "COMPLETE"
+                        else "NOT_LOADED"
+                    )
+                load_record["gpu_memory_peak_mib"] = max(peak) if peak else None
+                load_record["gpu_memory_sample_count"] = len(peak)
+                load_record["completed_utc"] = datetime.now(UTC).isoformat()
+                write_json(paths.p0_load_attempts, load_records)
     if not outcomes and "Q3_K_M" not in p0_quantizations(paths, registry):
         raise StopRequired("WM-A Q4 could not load and the prescribed Q3 fallback is unavailable.")
     if not outcomes:

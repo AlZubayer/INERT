@@ -1,4 +1,7 @@
+import json
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -12,7 +15,7 @@ from inert.p0 import (
     truncated_before_result,
 )
 from inert.parse import parse_result
-from inert.schemas import Item, Task
+from inert.schemas import Item, Message, Task
 from inert.server import ServerError
 
 
@@ -72,4 +75,64 @@ def test_p0_missing_q4_stops_without_writing_a_decision(
     monkeypatch.setattr(p0, "model_session", missing_file)
     with pytest.raises(StopRequired, match="Q4_K_M model file is unavailable"):
         p0.run_p0(paths, config, logging.getLogger("test-p0"))
+    assert not (paths.results / "p0.json").exists()
+
+
+def test_p0_records_each_failed_q4_load_without_claiming_q3_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = Paths(tmp_path)
+    config = load_config()
+    task = Task.model_construct(task_id="t0", n_tests=3)
+    items = [
+        Item.model_construct(
+            item_id=f"i{i}", task_id="t0", messages=[Message(role="user", content=f"i{i}")]
+        )
+        for i in range(100)
+    ]
+    registry = {"models": {"wm_a": {"files": [], "layer_count": 0}}}
+    monkeypatch.setattr(p0, "load_models", lambda _paths: registry)
+    monkeypatch.setattr(
+        p0,
+        "load_p0_manifest",
+        lambda _paths, _config: ({"manifest_sha256": "fixture"}, {"t0": task}, items),
+    )
+    monkeypatch.setattr(
+        p0,
+        "trial_identity",
+        lambda *_args: {"server": {"arguments": ["--ctx-size", "8192"]}},
+    )
+    monkeypatch.setattr(p0, "query_vram_mib", lambda: 600)
+    log = tmp_path / "current-server.log"
+    log.write_text("CUDA out of memory", encoding="utf-8")
+
+    class FakeClient:
+        model_hash = "fixture-model"
+        flags = {"gpu_layers": 1}
+        server_startup_seconds = None
+        server_log_path = str(log)
+        server_pid = 123
+        server_shutdown_ok = True
+
+        def complete(self, _messages: object, _parameters: object) -> None:
+            error = ServerError(f"llama-server exited during startup; see {log}.")
+            error.startup_seconds = 1.25
+            error.log_path = str(log)
+            raise error
+
+    @contextmanager
+    def fake_session(*_: object) -> Iterator[FakeClient]:
+        yield FakeClient()
+
+    monkeypatch.setattr(p0, "model_session", fake_session)
+    with pytest.raises(StopRequired, match="Q4 could not load"):
+        p0.run_p0(paths, config, logging.getLogger("test-p0-load-audit"))
+    rows = json.loads(paths.p0_load_attempts.read_text(encoding="utf-8"))
+    assert [row["gpu_layers"] for row in rows] == [1, 0]
+    assert all(row["startup_result"] == "OOM" for row in rows)
+    assert all(row["startup_seconds"] == 1.25 for row in rows)
+    assert all(row["server_log_path"] == str(log) for row in rows)
+    assert all(row["server_stopped"] is True for row in rows)
+    assert all(row["gpu_memory_peak_mib"] == 600 for row in rows)
+    assert all(row["server_arguments"] == ["--ctx-size", "8192"] for row in rows)
     assert not (paths.results / "p0.json").exists()

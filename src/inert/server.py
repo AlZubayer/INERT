@@ -13,6 +13,9 @@ from inert.config import Config, Paths
 class ServerError(RuntimeError):
     """Local server setup or lifecycle failure."""
 
+    startup_seconds: float | None = None
+    log_path: str | None = None
+
 
 class ModelServer:
     def __init__(

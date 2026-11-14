@@ -11,7 +11,7 @@ import yaml
 
 from inert.config import Config, Paths
 from inert.llm_client import CachedClient
-from inert.server import ModelServer
+from inert.server import ModelServer, ServerError
 
 
 @dataclass(frozen=True)
@@ -99,8 +99,15 @@ def model_session(
         nonlocal started
         if not started:
             startup_started = time.perf_counter()
-            server.__enter__()
+            try:
+                server.__enter__()
+            except ServerError as error:
+                error.startup_seconds = time.perf_counter() - startup_started
+                error.log_path = str(server.log.name) if server.log is not None else None
+                raise
             client.server_startup_seconds = time.perf_counter() - startup_started
+            client.server_log_path = str(server.log.name) if server.log is not None else None
+            client.server_pid = server.process.pid if server.process is not None else None
             started = True
 
     url = f"http://{config['server']['host']}:{config['server']['port']}"
@@ -112,8 +119,16 @@ def model_session(
         timeout=config["server"]["request_seconds"],
         on_miss=ensure_server,
     ) as client:
+        client.server_command = server.command
         try:
             yield client
         finally:
             if started:
-                server.__exit__()
+                try:
+                    server.__exit__()
+                finally:
+                    client.server_shutdown_ok = (
+                        server.process is not None
+                        and server.process.poll() is not None
+                        and not paths.server_lock.exists()
+                    )

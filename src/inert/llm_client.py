@@ -72,6 +72,10 @@ class CachedClient:
         self.flags = server_flags
         self.on_miss = on_miss
         self.server_startup_seconds: float | None = None
+        self.server_log_path: str | None = None
+        self.server_command: list[str] | None = None
+        self.server_pid: int | None = None
+        self.server_shutdown_ok: bool | None = None
         cache.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(cache)
         self.db.execute("PRAGMA journal_mode=WAL")
