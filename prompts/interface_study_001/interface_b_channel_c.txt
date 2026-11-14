@@ -1,0 +1,4 @@
+Channel C proposed terminal action (JSON keystrokes; no preceding files exist):
+{action_json}
+
+The test list has n = {n_tests} entries. Predict the number that pass. Return only the final RESULT line.

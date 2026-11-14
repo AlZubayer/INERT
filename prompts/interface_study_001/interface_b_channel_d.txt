@@ -1,0 +1,4 @@
+Channel D proposed tool-use conversation. The latest run_command has not yet returned:
+{conversation}
+
+The test list has n = {n_tests} entries. Predict the number that pass. Return only the final RESULT line.
