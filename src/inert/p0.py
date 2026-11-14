@@ -1,7 +1,7 @@
 import logging
 import re
-import subprocess
 import threading
+import time
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,9 +11,18 @@ import yaml
 
 from inert.audit import Progress, StopRequired, record_deviation
 from inert.config import Config, Paths
+from inert.llm_client import completion_request
 from inert.models import load_models, model_session
+from inert.p0_measurement import (
+    finalize_measurement,
+    measurement_path,
+    query_vram_mib,
+    record_live_request,
+    trial_identity,
+)
+from inert.p0_selection import load_p0_manifest
 from inert.parse import ParsedResult, parse_result
-from inert.schemas import Item, Score, Task, atomic_text, read_jsonl, write_json, write_jsonl
+from inert.schemas import Score, atomic_text, write_json, write_jsonl
 from inert.server import ServerError
 
 
@@ -23,19 +32,6 @@ def feasibility_decision(median_seconds: float, thresholds: Config) -> str:
     if median_seconds <= thresholds["p0_reduced_seconds"]:
         return "reduced"
     return "drop_wm_a"
-
-
-def select_p0_items(
-    tasks: list[Task], items: list[Item], config: Config
-) -> tuple[dict[str, Task], list[Item]]:
-    selected_tasks = tasks[: config["p0"]["tasks"]]
-    task_map = {task.task_id: task for task in selected_tasks}
-    if len(task_map) != config["p0"]["tasks"]:
-        raise ValueError("P0 requires 12 distinct ready tasks.")
-    selected_items = [item for item in items if item.task_id in task_map][: config["p0"]["calls"]]
-    if len(selected_items) != config["p0"]["calls"]:
-        raise ValueError("P0 requires 100 prepared items from the first 12 ready tasks.")
-    return task_map, selected_items
 
 
 def p0_quantizations(paths: Paths, registry: Config) -> list[str]:
@@ -68,8 +64,7 @@ def oom_from_load_error(error: ServerError) -> bool:
 
 def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
     registry = load_models(paths)
-    tasks = read_jsonl(paths.tasks, Task)
-    task_map, items = select_p0_items(tasks, read_jsonl(paths.items, Item), config)
+    manifest, task_map, items = load_p0_manifest(paths, config)
     outcomes = []
     for quant in p0_quantizations(paths, registry):
         max_layers = registry["models"]["wm_a"]["layer_count"] + 1
@@ -77,36 +72,69 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
         for layers in trials:
             try:
                 with model_session(paths, config, "wm_a", quant, layers) as client:
-                    peak: list[int] = []
-                    stopped = threading.Event()
-
-                    def monitor(stopped: threading.Event = stopped, peak: list[int] = peak) -> None:
-                        while not stopped.is_set():
-                            result = subprocess.run(
-                                [
-                                    "nvidia-smi",
-                                    "--query-gpu=memory.used",
-                                    "--format=csv,noheader,nounits",
-                                ],
-                                capture_output=True,
-                                text=True,
-                                timeout=10,
-                            )
-                            if result.returncode == 0:
-                                peak.extend(int(x) for x in result.stdout.split() if x.isdigit())
-                            stopped.wait(0.1)
-
-                    watcher = threading.Thread(target=monitor, daemon=True)
-                    watcher.start()
                     parameters = dict(config["sampling"]["wm"])
                     attempts = []
-                    try:
-                        while True:
+                    while True:
+                        identity = trial_identity(
+                            paths,
+                            registry,
+                            client,
+                            quant,
+                            layers,
+                            parameters,
+                            manifest["manifest_sha256"],
+                        )
+                        peak: list[int] = []
+                        monitor_errors: list[str] = []
+                        stopped = threading.Event()
+                        trial_started = time.perf_counter()
+
+                        def monitor(
+                            stopped: threading.Event = stopped,
+                            peak: list[int] = peak,
+                            monitor_errors: list[str] = monitor_errors,
+                        ) -> None:
+                            while not stopped.is_set():
+                                try:
+                                    peak.append(query_vram_mib())
+                                except StopRequired as error:
+                                    monitor_errors.append(str(error))
+                                    return
+                                stopped.wait(0.1)
+
+                        watcher = threading.Thread(target=monitor, daemon=True)
+                        watcher.start()
+                        live_requests = 0
+                        request_keys: list[str] = []
+                        try:
                             scores = []
                             truncated = 0
                             progress = Progress(len(items))
                             for item in items:
+                                key, _, _ = completion_request(
+                                    client.model_hash, client.flags, item.messages, parameters
+                                )
+                                sample_start = len(peak)
                                 completion = client.complete(item.messages, parameters)
+                                if not completion.cache_hit:
+                                    live_requests += 1
+                                    if monitor_errors:
+                                        raise StopRequired(monitor_errors[0])
+                                    peak.append(query_vram_mib())
+                                    window = peak[sample_start:]
+                                    record_live_request(
+                                        paths,
+                                        identity,
+                                        key,
+                                        max(window),
+                                        len(window),
+                                        completion.latency_s,
+                                        completion.completion_tokens,
+                                        client.server_startup_seconds
+                                        if live_requests == 1
+                                        else None,
+                                    )
+                                request_keys.append(key)
                                 parsed = parse_result(
                                     completion.raw_output, task_map[item.task_id].n_tests
                                 )
@@ -126,39 +154,51 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                                     )
                                 )
                                 progress.advance()
-                            score_path = (
-                                paths.data
-                                / "p0"
-                                / f"{quant}-{layers}-{parameters['max_tokens']}.jsonl"
+                        finally:
+                            stopped.set()
+                            watcher.join(timeout=11)
+                        if watcher.is_alive() and live_requests:
+                            raise StopRequired("P0 GPU-memory monitor did not stop cleanly.")
+                        if monitor_errors and live_requests:
+                            raise StopRequired(monitor_errors[0])
+                        measurement = finalize_measurement(
+                            paths,
+                            identity,
+                            request_keys,
+                            scores,
+                            time.perf_counter() - trial_started,
+                        )
+                        score_path = (
+                            paths.data / "p0" / f"{quant}-{layers}-{parameters['max_tokens']}.jsonl"
+                        )
+                        write_jsonl(score_path, scores, Score)
+                        attempts.append(str(score_path.relative_to(paths.root)))
+                        if (
+                            truncated / len(items) > config["thresholds"]["p0_truncation"]
+                            and parameters["max_tokens"] != config["p0"]["extended_max_tokens"]
+                        ):
+                            record_deviation(
+                                paths,
+                                f"P0 {quant}: truncated without RESULT above 5%; "
+                                "raise WM-A max_tokens to 2048 under section 5.2.",
+                                True,
                             )
-                            write_jsonl(score_path, scores, Score)
-                            attempts.append(str(score_path.relative_to(paths.root)))
-                            if (
-                                truncated / len(items) > config["thresholds"]["p0_truncation"]
-                                and parameters["max_tokens"] != config["p0"]["extended_max_tokens"]
-                            ):
-                                record_deviation(
-                                    paths,
-                                    f"P0 {quant}: truncated without RESULT above 5%; "
-                                    "raise WM-A max_tokens to 2048 under section 5.2.",
-                                    True,
-                                )
-                                parameters["max_tokens"] = config["p0"]["extended_max_tokens"]
-                                continue
-                            break
-                    finally:
-                        stopped.set()
-                        watcher.join(timeout=11)
-                    if not peak:
-                        raise StopRequired("P0 could not measure GPU memory with nvidia-smi.")
-                    latencies = [s.latency_s for s in scores]
+                            parameters["max_tokens"] = config["p0"]["extended_max_tokens"]
+                            continue
+                        break
+                    latencies = [
+                        measurement["live_observations"][key]["latency_s"] for key in request_keys
+                    ]
                     fail_rate = sum(s.parse_status == "fail" for s in scores) / len(scores)
                     if fail_rate > config["thresholds"]["parse_failure"]:
                         raise StopRequired(
                             "P0 parse-failure rate exceeds 10%. "
                             "Inspect the prompt before continuing."
                         )
-                    total_tokens = sum(s.completion_tokens or 0 for s in scores)
+                    total_tokens = sum(
+                        measurement["live_observations"][key]["completion_tokens"]
+                        for key in request_keys
+                    )
                     outcomes.append(
                         {
                             "quantization": quant,
@@ -167,7 +207,18 @@ def run_p0(paths: Paths, config: Config, logger: logging.Logger) -> dict:
                             "p90_seconds": float(np.quantile(latencies, 0.9)),
                             "tokens_per_second": total_tokens / sum(latencies),
                             "parse_failure_rate": fail_rate,
-                            "peak_vram_mib": max(peak) if peak else None,
+                            "peak_vram_mib": measurement["peak_vram_mib"],
+                            "vram_measurement_file": str(
+                                measurement_path(paths, identity).relative_to(paths.root)
+                            ),
+                            "vram_live_requests": measurement["live_requests_completed"],
+                            "live_requests_this_run": measurement["last_run_live_requests"],
+                            "cache_hits_this_run": measurement["last_run_cache_hits"],
+                            "server_startup_seconds": measurement["startup_seconds"],
+                            "total_elapsed_seconds": measurement["last_run_elapsed_seconds"],
+                            "latency_source": (
+                                "live HTTP request durations, including cached originals"
+                            ),
                             "max_tokens": parameters["max_tokens"],
                             "source_score_files": attempts,
                             "calls": len(scores),

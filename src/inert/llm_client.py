@@ -39,6 +39,23 @@ def local_url(url: str) -> str:
     return url.rstrip("/")
 
 
+def completion_request(
+    model_hash: str,
+    flags: dict[str, Any],
+    messages: list[Message],
+    parameters: dict[str, Any],
+) -> tuple[str, str, dict[str, Any]]:
+    params = {key: parameters[key] for key in ("temperature", "top_p", "max_tokens", "seed")}
+    payload = {"messages": [message.model_dump() for message in messages], **params}
+    identity = {
+        "model_file_sha256": model_hash,
+        "server_flags_that_affect_output": flags,
+        **payload,
+    }
+    serialized = json.dumps(identity, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    return hashlib.sha256(serialized.encode()).hexdigest(), serialized, payload
+
+
 class CachedClient:
     def __init__(
         self,
@@ -54,6 +71,7 @@ class CachedClient:
         self.model_hash = model_file_sha256
         self.flags = server_flags
         self.on_miss = on_miss
+        self.server_startup_seconds: float | None = None
         cache.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(cache)
         self.db.execute("PRAGMA journal_mode=WAL")
@@ -81,15 +99,9 @@ class CachedClient:
         self.db.close()
 
     def complete(self, messages: list[Message], parameters: dict[str, Any]) -> Completion:
-        params = {key: parameters[key] for key in ("temperature", "top_p", "max_tokens", "seed")}
-        payload = {"messages": [message.model_dump() for message in messages], **params}
-        identity = {
-            "model_file_sha256": self.model_hash,
-            "server_flags_that_affect_output": self.flags,
-            **payload,
-        }
-        serialized = json.dumps(identity, sort_keys=True, ensure_ascii=False, allow_nan=False)
-        key = hashlib.sha256(serialized.encode()).hexdigest()
+        key, serialized, payload = completion_request(
+            self.model_hash, self.flags, messages, parameters
+        )
         saved = self.db.execute("SELECT completion FROM calls WHERE key = ?", (key,)).fetchone()
         if saved:
             return replace(Completion(**json.loads(saved[0])), cache_hit=True)

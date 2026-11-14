@@ -1,5 +1,7 @@
+import hashlib
 import logging
 import shutil
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from inert.pipeline import build_items, choose_core, execute_candidates
 from inert.sandbox import DockerSandbox
 from inert.schemas import Candidate, Item, Score, Task, read_jsonl, write_jsonl
 from inert.score import check_model_validity, score_items
+from inert.tasks import prepare_tasks
 
 
 def project(tmp_path: Path) -> tuple[Paths, dict, list[Task], list[Candidate]]:
@@ -73,6 +76,94 @@ def test_execution_core_items_and_resume(tmp_path: Path) -> None:
     execute_candidates(paths, config, sandbox, logger)
     build_items(paths, config, sandbox, logger)
     assert paths.items.read_bytes() == original
+
+
+@pytest.mark.docker
+def test_isolated_sandbox_cache_covers_execute_core_and_items(tmp_path: Path) -> None:
+    paths, config, _, _ = project(tmp_path)
+    isolated = Paths(
+        tmp_path,
+        sandbox_cache_override=Path(
+            "data/p0/preparation_audit_20261114/sandbox_cache/sandbox.sqlite"
+        ),
+    )
+    legacy = paths.cache("sandbox")
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_bytes(b"historical cache sentinel")
+    original_hash = hashlib.sha256(legacy.read_bytes()).hexdigest()
+    sandbox = DockerSandbox(isolated, config["sandbox"])
+    logger = logging.getLogger("isolated-pilot-sandbox")
+    execute_candidates(isolated, config, sandbox, logger)
+    with sqlite3.connect(isolated.cache("sandbox")) as database:
+        after_execute = database.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
+    choose_core(isolated, config, sandbox, logger)
+    with sqlite3.connect(isolated.cache("sandbox")) as database:
+        after_core = database.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
+    from inert.schemas import Thought
+
+    write_jsonl(
+        isolated.thoughts,
+        [
+            Thought(cand_id=f"c{i}", text="Identity implementation.", seed=5000 + i)
+            for i in range(4)
+        ],
+        Thought,
+    )
+    build_items(isolated, config, sandbox, logger)
+    with sqlite3.connect(isolated.cache("sandbox")) as database:
+        after_items = database.execute("SELECT COUNT(*) FROM executions").fetchone()[0]
+    assert after_execute > 0
+    assert after_core >= after_execute
+    assert after_items > after_core
+    assert hashlib.sha256(legacy.read_bytes()).hexdigest() == original_hash
+    assert isolated.cache("proposer") == paths.cache("proposer")
+
+
+@pytest.mark.docker
+def test_isolated_sandbox_cache_covers_task_filtering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = Paths(
+        tmp_path,
+        sandbox_cache_override=Path(
+            "data/p0/preparation_audit_20261114/sandbox_cache/sandbox.sqlite"
+        ),
+    )
+    shutil.copytree(Paths.discover().configs, paths.configs)
+    config = load_config(paths)
+    config["tasks"]["count"] = 1
+    config["tasks"]["reserves"] = 0
+    row = {
+        "task_id": 123,
+        "prompt": "Return the input.",
+        "code": "def f(x): return x",
+        "test_imports": [],
+        "test_list": ["assert f(0) == 0", "assert f(1) == 1", "assert f(-1) == -1"],
+    }
+    monkeypatch.setattr("inert.tasks.load_mbpp", lambda *_args: {"test": [row]})
+    legacy = paths.root / "data/cache/sandbox.sqlite"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(b"historical cache sentinel")
+    prepare_tasks(
+        paths,
+        config,
+        DockerSandbox(paths, config["sandbox"]),
+        lambda _text: 1,
+        logging.getLogger("isolated-task-filter"),
+    )
+    assert len(read_jsonl(paths.tasks, Task)) == 1
+    assert paths.cache("sandbox").is_file()
+    assert legacy.read_bytes() == b"historical cache sentinel"
+
+
+def test_sandbox_cache_override_is_explicit_and_bounded(tmp_path: Path) -> None:
+    regular = Paths(tmp_path)
+    assert regular.cache("sandbox") == tmp_path / "data/cache/sandbox.sqlite"
+    isolated = Paths(tmp_path, sandbox_cache_override=Path("data/p0/audit/cache.sqlite"))
+    assert isolated.cache("sandbox") == tmp_path / "data/p0/audit/cache.sqlite"
+    assert isolated.cache("proposer") == regular.cache("proposer")
+    with pytest.raises(ValueError, match="under data/p0"):
+        Paths(tmp_path, sandbox_cache_override=Path("data/cache/sandbox.sqlite"))
 
 
 def test_scoring_resume_and_parse_failure_gate(tmp_path: Path) -> None:

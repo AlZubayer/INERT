@@ -11,6 +11,7 @@ from inert.audit import StopRequired, stage_log
 from inert.config import Paths, load_config
 from inert.models import model_session
 from inert.p0 import run_p0
+from inert.p0_selection import prepare_p0_manifest
 from inert.pipeline import build_items, choose_core, execute_candidates
 from inert.planning import model_items
 from inert.proposer import generate_candidates, generate_thoughts
@@ -33,9 +34,13 @@ def main(
     smoke: Annotated[
         bool, typer.Option("--smoke", help="Isolate a 3-task WM-C smoke run.")
     ] = False,
+    sandbox_cache: Annotated[
+        Path | None,
+        typer.Option("--sandbox-cache", help="Isolate the pilot Docker sandbox cache."),
+    ] = None,
 ) -> None:
     base = root if root is not None else Paths.discover().root
-    paths = Paths(base, "smoke" if smoke else "pilot")
+    paths = Paths(base, "smoke" if smoke else "pilot", sandbox_cache_override=sandbox_cache)
     ctx.obj = {"paths": paths, "config": load_config(paths)}
 
 
@@ -153,6 +158,18 @@ def p0_command(ctx: typer.Context, wm: Annotated[str, typer.Option("--wm")] = "w
         run_p0(paths, config, logger)
 
     _run(ctx, "p0", run)
+
+
+@app.command("prepare-p0")
+def prepare_p0_command(ctx: typer.Context) -> None:
+    def run(paths: Paths, config: dict, logger: Any) -> None:
+        _ready(paths)
+        if paths.profile != "pilot":
+            raise ValueError("P0 selection is defined only for the pilot profile.")
+        manifest = prepare_p0_manifest(paths, config)
+        logger.info("Frozen P0 selection: %s", manifest["manifest_sha256"])
+
+    _run(ctx, "prepare-p0", run)
 
 
 def _all_scores(paths: Paths, config: dict) -> list[Score]:

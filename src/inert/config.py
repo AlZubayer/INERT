@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -13,11 +13,19 @@ Config = dict[str, Any]
 class Paths:
     root: Path
     profile: str = "pilot"
+    sandbox_cache_override: Path | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if self.profile not in ("pilot", "smoke"):
             raise ValueError("Unknown run profile.")
         object.__setattr__(self, "root", self.root.resolve())
+        if self.sandbox_cache_override is not None:
+            target = (self.root / self.sandbox_cache_override).resolve()
+            if self.profile != "pilot" or not target.is_relative_to(self.shared_data / "p0"):
+                raise ValueError("Pilot sandbox-cache override must be under data/p0/.")
+            if target.suffix != ".sqlite":
+                raise ValueError("Sandbox-cache override must name a SQLite file.")
+            object.__setattr__(self, "sandbox_cache_override", target)
 
     @classmethod
     def discover(cls, start: Path | None = None) -> "Paths":
@@ -69,6 +77,14 @@ class Paths:
         return self.data / "items.jsonl"
 
     @property
+    def p0_manifest(self) -> Path:
+        return self.data / "p0" / "selection_manifest.json"
+
+    @property
+    def p0_measurements(self) -> Path:
+        return self.data / "p0" / "measurements"
+
+    @property
     def summary(self) -> Path:
         return self.results / "summary.json"
 
@@ -89,6 +105,8 @@ class Paths:
         return self.shared_data / "server.lock"
 
     def cache(self, model: str) -> Path:
+        if model == "sandbox" and self.sandbox_cache_override is not None:
+            return self.sandbox_cache_override
         return self.data / "cache" / f"{_identifier(model)}.sqlite"
 
     def scores(self, model: str) -> Path:

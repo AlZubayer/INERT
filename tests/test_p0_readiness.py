@@ -9,24 +9,11 @@ from inert.config import Paths, load_config
 from inert.p0 import (
     oom_from_load_error,
     p0_quantizations,
-    select_p0_items,
     truncated_before_result,
 )
 from inert.parse import parse_result
 from inert.schemas import Item, Task
 from inert.server import ServerError
-
-
-def test_p0_requires_12_distinct_tasks_before_any_calls() -> None:
-    config = load_config()
-    tasks = [Task.model_construct(task_id=f"t{i}") for i in range(11)]
-    items = [Item.model_construct(task_id="t0") for _ in range(100)]
-    with pytest.raises(ValueError, match="12 distinct ready tasks"):
-        select_p0_items(tasks, items, config)
-    tasks.append(Task.model_construct(task_id="t11"))
-    task_map, selected = select_p0_items(tasks, items, config)
-    assert len(task_map) == 12
-    assert len(selected) == 100
 
 
 def test_p0_skips_unavailable_q3_but_uses_it_when_present(tmp_path: Path) -> None:
@@ -69,7 +56,15 @@ def test_p0_missing_q4_stops_without_writing_a_decision(
     items = [Item.model_construct(task_id="t0") for _ in range(100)]
     registry = {"models": {"wm_a": {"files": [], "layer_count": 40}}}
     monkeypatch.setattr(p0, "load_models", lambda _: registry)
-    monkeypatch.setattr(p0, "read_jsonl", lambda _, schema: tasks if schema is Task else items)
+    monkeypatch.setattr(
+        p0,
+        "load_p0_manifest",
+        lambda _paths, _config: (
+            {"manifest_sha256": "fixture"},
+            {t.task_id: t for t in tasks},
+            items,
+        ),
+    )
 
     def missing_file(*_: object) -> None:
         raise FileNotFoundError("Q4 file is missing")

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -97,7 +98,9 @@ def model_session(
     def ensure_server() -> None:
         nonlocal started
         if not started:
+            startup_started = time.perf_counter()
             server.__enter__()
+            client.server_startup_seconds = time.perf_counter() - startup_started
             started = True
 
     url = f"http://{config['server']['host']}:{config['server']['port']}"

@@ -1,3 +1,5 @@
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -5,7 +7,7 @@ import httpx
 import pytest
 
 from inert.config import Paths, load_config
-from inert.llm_client import CachedClient
+from inert.llm_client import CachedClient, completion_request
 from inert.schemas import Message
 from inert.server import ModelServer, ServerError
 
@@ -55,6 +57,22 @@ def test_local_only_and_cache_key(tmp_path: Path) -> None:
     ) as other:
         assert not other.complete(messages, params).cache_hit
     assert len(calls) == 3
+
+
+def test_completion_request_preserves_existing_cache_identity() -> None:
+    messages = [Message(role="user", content="fixture prompt")]
+    parameters = dict(temperature=0.0, top_p=1.0, max_tokens=1024, seed=0)
+    flags = {"ctx": 8192}
+    identity = {
+        "model_file_sha256": "a" * 64,
+        "server_flags_that_affect_output": flags,
+        "messages": [message.model_dump() for message in messages],
+        **parameters,
+    }
+    serialized = json.dumps(identity, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    key, actual, payload = completion_request("a" * 64, flags, messages, parameters)
+    assert (key, actual) == (hashlib.sha256(serialized.encode()).hexdigest(), serialized)
+    assert payload == {"messages": [message.model_dump() for message in messages], **parameters}
 
 
 def test_failed_http_call_is_not_cached(tmp_path: Path) -> None:

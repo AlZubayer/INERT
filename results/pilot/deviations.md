@@ -528,3 +528,119 @@ The prospective historical inventory showed zero additional modifications.
 These are engineering-only observations, not a pilot verdict or a replacement
 for the failed original WM-C smoke gate. No KT-C, P0, WM-A, WM-C, or official
 pilot scoring was started.
+
+## 2026-11-14: owner-approved deterministic P0 item selection
+
+Before official pilot input preparation, the owner specified a deterministic
+interpretation of design section 10's "100 items from the first 12 ready tasks
+(any conditions)." Each task contributes eight KT-A/KT-B items; the first four
+contribute one additional item. Core candidates are sorted by generation index
+and ID, conditions retain the frozen config order, channels alternate as
+specified in the preparation authorization, and the resulting 100 items must
+be unique with 50 in each channel. This replaces the implementation's
+first-100-in-file-order slice for P0 only. The frozen task sample, text
+conditions, endpoints, thresholds, seeds, and pilot scoring populations remain
+unchanged. No WM-A or official pilot scoring had started; historical smoke and
+engineering diagnostic scoring had occurred.
+
+## 2026-11-14: owner-approved P0 VRAM provenance rule
+
+The owner required P0 peak VRAM to come from a completed live model trial and
+to be persisted under a full trial identity before a cache-only restart may
+reuse it. The identity includes model and server hashes, quantization, GPU
+offload, context, server arguments, inference parameters, and the frozen P0
+selection manifest hash. A missing, incomplete, or mismatched measurement
+must stop P0 without a decision. This guards against reporting idle GPU memory
+from a cache-only replay. The feasibility thresholds, timing data, parser,
+sampling parameters, and token-escalation rule are unchanged. No WM-A or
+official pilot scoring had started; historical smoke and engineering diagnostic
+scoring had occurred.
+
+## 2026-11-14: pilot task-stage historical cache preservation failure
+
+The owner required all existing historical caches to remain unchanged during
+P0 input preparation. A SHA-256 baseline was recorded before stages at
+`data/p0/preparation_audit_20261114/historical_inventory_before.json`.
+After `inert tasks` completed the frozen 50-task sample and 10 reserves,
+the pre-existing `data/cache/sandbox.sqlite` changed from SHA-256
+`956bbf780edafcc5d31b05461de14403113d92d8ea000703c9f6ea2e6aee7149`
+to `5febe62370e779409019f7bef98d4afc63f37f21848dfb59101390f8a15650d2`.
+The task stage used its configured pilot sandbox cache for reference checks;
+this was an unintended preservation failure. The other 8,851 immutable
+historical files matched their baseline hashes. The baseline also included
+157 pytest temporary files under `data/pytest-tmp/`; those are classified
+separately in the after-check and were not rebaselined.
+
+The changed SQLite file passed `integrity_check` and contains 492 execution
+records. An exact byte copy, a consistent SQLite backup, and incident metadata
+are preserved under
+`data/p0/preparation_audit_20261114/preservation_incident/`. No matching
+copy of the original baseline bytes was found, so the original cache cannot
+be restored byte for byte from available evidence. This new incident is not
+covered by the earlier owner-accepted smoke diagnostic cache exception.
+Preparation stopped before proposer inference, candidate execution, thoughts,
+item construction, P0, or pilot scoring. The frozen task and reserve records
+remain in their prescribed pilot paths; no historical inventory was silently
+rebaselined. Owner direction is required before continuing data stages.
+
+## 2026-11-14: second cache incident accepted prospectively
+
+The owner explicitly approved `HISTORICAL_PRESERVATION_EXCEPTION_ACCEPTED_2`
+for the distinct pilot task-stage sandbox cache incident above. The original
+failed SHA-256 comparison remains in the unmodified inventory. A separate
+prospective inventory at
+`data/p0/preparation_audit_20261114/historical_inventory_prospective.json`
+accepts the current SHA-256
+`5febe62370e779409019f7bef98d4afc63f37f21848dfb59101390f8a15650d2`
+only for `data/cache/sandbox.sqlite`. The other 8,851 protected historical
+files retain their original hashes. The changed database passes SQLite
+`integrity_check` with 492 records; all 13 archived import-dependent reference
+checks remain present with matching source, harness, stdout, stderr, and return
+code. The exact byte copy and consistent SQLite backup remain in the ignored
+preservation-incident directory. The owner authorized a separate sandbox cache
+for remaining pilot preparation and local proposer inference; no previous
+history or original cache bytes were reconstructed. P0 and official pilot
+scoring had not started.
+
+The owner also clarified design section 10 timing: P0 decision latency is the
+HTTP request-to-completed-response interval, excluding one-time server startup.
+Startup is measured and reported separately. Live and cache-hit calls remain
+distinct, and cache lookup time is not substituted for inference latency.
+The 20- and 50-second P0 decision thresholds are unchanged. This clarification
+was approved before any WM-A P0 call.
+
+## 2026-11-14: resumed pilot input preparation and transient file-write interruption
+
+The owner-approved prospective cache exception was applied only to
+`data/cache/sandbox.sqlite`. The remaining preparation stages used an explicit
+isolated Docker cache at
+`data/p0/preparation_audit_20261114/sandbox_cache/sandbox.sqlite`; the original
+cache retained prospective SHA-256
+`5febe62370e779409019f7bef98d4afc63f37f21848dfb59101390f8a15650d2`.
+The original failed hash comparison remains recorded above. All 8,852
+protected files matched the prospective inventory after each stage. The
+isolation and inventory correction did not change sandbox execution, cache
+keys, model prompts, seeds, conditions, or decision thresholds.
+
+The registered core-set reserve mechanism activated nine reserves in order:
+`mbpp-593` to `mbpp-240`, `mbpp-253` to `mbpp-167`, `mbpp-611` to
+`mbpp-457`, `mbpp-624` to `mbpp-417`, `mbpp-292` to `mbpp-230`, `mbpp-230`
+to `mbpp-566`, `mbpp-90` to `mbpp-580`, `mbpp-118` to `mbpp-233`, and
+`mbpp-750` to `mbpp-788`. These were prescribed replacements, not a changed
+selection rule. Fifty tasks are core ready; one reserve remains.
+
+The first `build-items` process stopped when Windows returned `WinError 5`
+while atomically replacing `data/inertness.jsonl`. Its 948 completed checks
+were schema-valid, unique, and PASS. No inertness failure occurred. The
+registered stage was rerun once with the same inputs and isolated cache; it
+reused passed-check records and completed 5,316 items with 3,678 PASS
+Channel-C inertness records. No parser, harness, template, or scientific rule
+was altered to handle the I/O interruption.
+
+The frozen P0 input manifest is
+`data/p0/selection_manifest.json`, SHA-256
+`81431897467fe7a62821c44967c888bfd1b9bec9ae8520538470fe35051827e0`.
+It selects 12 ready tasks and 100 existing items, 50 per channel, with all
+nine registered conditions. The ignored source and final audits are under
+`data/p0/preparation_audit_20261114/`. P0 itself and pilot scoring did not
+run; the original WM-C smoke gate remains closed.
